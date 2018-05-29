@@ -2,7 +2,7 @@
 set -e
 DIR=$(dirname "$0")
 
-PYTHON="python -m coverage run -a --source $DIR/../src/"
+PYTHON="python3 -m coverage run -a --source $DIR/../src/"
 $PYTHON $DIR/../src/zenodo_get.py
 $PYTHON $DIR/../src/zenodo_get.py -h
 

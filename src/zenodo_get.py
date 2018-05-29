@@ -75,6 +75,9 @@ if __name__ == '__main__':
             options.record = args[0]
         except ValueError:
             options.doi = args[0]
+    elif options.doi is None and options.record is None:
+        parser.print_help()
+        sys.exit(0)
 
     if options.doi is not None:
         url = options.doi
