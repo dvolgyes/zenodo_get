@@ -17,12 +17,12 @@ Install
 -------
 
 ```
-pip install git+https://github.com/dvolgyes/zenodo_get
+pip3 install git+https://github.com/dvolgyes/zenodo_get
 ```
 
 Afterwards, you can query the command line options:
 ```
-zenodo_get -h
+zenodo_get.py -h
 ```
 
 but the default settings should work for most use cases:
