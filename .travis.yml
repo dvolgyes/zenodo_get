@@ -1,0 +1,24 @@
+language: python
+
+matrix:
+    fast_finish: true
+    include:
+        - os: linux
+          dist: trusty
+          sudo: required
+          python: 3.6
+          env: PYVERSION="3"
+
+install:
+    - pip${PYVERSION} install --upgrade pip setuptools wheel
+    - pip${PYVERSION} install coveralls codecov pyflakes
+    - pip${PYVERSION} install -r requirements.txt
+    - pip${PYVERSION} install git+https://github.com/dvolgyes/zenodo_get
+
+script:
+  - make ci-test
+  - make test
+
+after_success:
+  - coveralls
+  - codecov
