@@ -26,5 +26,5 @@ setup(
     license='AGPL3',
     platforms=[get_platform()],
     require=reqs,
-    download_url='https://github.com/dvolgyes/zenodo_get/archive/latest.tar.gz',
+    download_url='https://github.com/dvolgyes/zenodo_get/archive/latest.tar.gz'
 )

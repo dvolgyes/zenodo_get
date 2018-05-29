@@ -16,7 +16,6 @@ install:
     - pip${PYVERSION} install git+https://github.com/dvolgyes/zenodo_get
 
 script:
-  - make ci-test
   - make test
 
 after_success:
