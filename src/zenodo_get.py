@@ -44,7 +44,10 @@ def check_hash(filename, checksum):
 
 if __name__ == '__main__':
 
-    parser = OptionParser()
+    parser = OptionParser(
+             usage='%prog [options] RECORD_OR_DOI',
+             version='%prog {}'.format(__version__)
+             )
     parser.add_option('-r', '--record',
                       action='store',
                       type='string',
