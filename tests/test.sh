@@ -2,7 +2,11 @@
 set -e
 DIR=$(dirname "$0")
 
-PYTHON="python3 -m coverage run -a --source $DIR/../src/"
+if [ -z "${PYVERSION+xxx}" ]; then 
+    PYVERSION=3
+fi
+
+PYTHON="python$PYVERSION -m coverage run -a --source $DIR/../src/"
 $PYTHON $DIR/../src/zenodo_get.py
 $PYTHON $DIR/../src/zenodo_get.py -h
 
