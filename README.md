@@ -8,10 +8,11 @@ AppVeyor: [![Build status](https://ci.appveyor.com/api/projects/status/f6hw96rhd
 Coveralls: [![Coverage Status](https://coveralls.io/repos/github/dvolgyes/zenodo_get/badge.svg?branch=master)](https://coveralls.io/github/dvolgyes/zenodo_get?branch=master)
 Codecov: [![codecov](https://codecov.io/gh/dvolgyes/zenodo_get/branch/master/graph/badge.svg)](https://codecov.io/gh/dvolgyes/zenodo_get)
 
-This is a Python3 tool which can mass-download files from Zenodo records.
+This is a Python2/3 tool which can mass-download files from Zenodo records.
 
-[![pyversion](https://img.shields.io/pypi/pyversions/zenodo_get.svg)](https://test.pypi.org/project/zenodo-get/) Minimum Python version is 2.7 or 3.5, but if there is a strong demand, I could port it to older versions too.
-
+[![pyversion](https://img.shields.io/pypi/pyversions/zenodo_get.svg)](https://pypi.org/project/zenodo-get/)
+![PyPI - License](https://img.shields.io/pypi/l/zenodo_get.svg)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.XXXXXX.svg)](https://doi.org/10.5281/zenodo.XXXXXX)
 
 Install
 -------
