@@ -5,12 +5,12 @@ Semaphore: [![Build Status](https://semaphoreci.com/api/v1/dvolgyes/zenodo_get/b
 CircleCI: [![Build status](https://circleci.com/gh/dvolgyes/zenodo_get.svg?style=svg)](https://circleci.com/gh/dvolgyes/zenodo_get)
 AppVeyor: [![Build status](https://ci.appveyor.com/api/projects/status/f6hw96rhdl104ch9?svg=true)](https://ci.appveyor.com/project/dvolgyes/zenodo-get)
 
-Coveralls: [![Coverage Status](https://img.shields.io/coveralls/github/dvolgyes/zenodo_get/master.svg)](https://coveralls.io/github/dvolgyes/zenodo_get?branch=master)
+Coveralls: [![Coverage Status](https://coveralls.io/repos/github/dvolgyes/zenodo_get/badge.svg?branch=master)](https://coveralls.io/github/dvolgyes/zenodo_get?branch=master)
 Codecov: [![codecov](https://codecov.io/gh/dvolgyes/zenodo_get/branch/master/graph/badge.svg)](https://codecov.io/gh/dvolgyes/zenodo_get)
 
 This is a Python3 tool which can mass-download files from Zenodo records.
 
-Minimum Python version is 2.7 or 3.5, but if there is a strong demand, I could port it to older versions too.
+[![pyversion](https://img.shields.io/pypi/pyversions/zenodo_get.svg)](https://test.pypi.org/project/zenodo-get/) Minimum Python version is 2.7 or 3.5, but if there is a strong demand, I could port it to older versions too.
 
 
 Install

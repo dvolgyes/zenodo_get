@@ -9,6 +9,31 @@ matrix:
           python: 3.6
           env: PYVERSION="3"
 
+        - os: linux
+          dist: trusty
+          sudo: required
+          python: 3.5
+          env: PYVERSION="3"
+
+        - os: linux
+          dist: trusty
+          sudo: required
+          python: 2.7
+          env: PYVERSION="2"
+
+
+        - os: linux
+          dist: trusty
+          sudo: required
+          python: "pypy2.7"
+          env: PYVERSION="2"
+
+        - os: linux
+          dist: trusty
+          sudo: required
+          python: "pypy3.5"
+          env: PYVERSION="2"
+
 install:
     - pip${PYVERSION} install --upgrade pip setuptools wheel
     - pip${PYVERSION} install coveralls codecov pyflakes
