@@ -1,5 +1,6 @@
 #!/usr/bin/python3
 # -*- coding: utf-8 -*-
+from __future__ import print_function
 
 import requests
 import json
@@ -8,6 +9,7 @@ import sys
 import os
 from optparse import OptionParser
 import wget
+import time
 
 __version__ = '1.0.0'
 __title__ = 'zenodo_get'
@@ -27,6 +29,8 @@ def eprint(*args, **kwargs):
 
 def check_hash(filename, checksum):
     algorithm, value = checksum.split(':')
+    if not os.path.exists(filename):
+        return value, 'invalid'
     h = hashlib.new(algorithm)
     with open(filename, 'rb') as f:
         while True:
@@ -55,6 +59,21 @@ if __name__ == '__main__':
                       help='Zenodo DOI',
                       default=None)
 
+    parser.add_option('-m', '--md5',
+                      action='store_true',
+                      # ~type=bool,
+                      dest='md5',
+                      help='Create md5sums.txt for verification.',
+                      default=False)
+
+    parser.add_option('-w', '--wget',
+                      action='store',
+                      type='string',
+                      dest='wget',
+                      help='Create URL list for download managers. '
+                      '(Files will not be downloaded.)',
+                      default=None)
+
     parser.add_option('-e', '--continue-on-error',
                       action='store_true',
                       dest='error',
@@ -64,8 +83,30 @@ if __name__ == '__main__':
     parser.add_option('-k', '--keep',
                       action='store_true',
                       dest='keep',
-                      help='Keep files with invalid checksum.',
+                      help='Keep files with invalid checksum.'
+                      ' (Default: delete them.)',
                       default=False)
+
+    parser.add_option('-n', '--do-not-continue',
+                      action='store_false',
+                      dest='cont',
+                      help='Do not continue previous download attempt.'
+                      ' (Default: continue.)',
+                      default=True)
+
+    parser.add_option('-R', '--retry',
+                      action='store',
+                      type=int,
+                      dest='retry',
+                      help='Retry on error N more times.',
+                      default=0)
+
+    parser.add_option('-p', '--pause',
+                      action='store',
+                      type=float,
+                      dest='pause',
+                      help='Wait N second before retry attempt, e.g. 0.5',
+                      default=0.5)
 
     (options, args) = parser.parse_args()
 
@@ -82,7 +123,7 @@ if __name__ == '__main__':
     if options.doi is not None:
         url = options.doi
         if not url.startswith('http'):
-            url = f'https://doi.org/{url}'
+            url = 'https://doi.org/'+url
         r = requests.get(url)
         if not r.ok:
             eprint('DOI could not be resolved. Try again, or use record ID.')
@@ -98,27 +139,70 @@ if __name__ == '__main__':
         js = json.loads(r.text)
         files = js['files']
         total_size = sum(f['size'] for f in files)
-        eprint(f'Total size: {total_size/2**20:.1f} MB')
-        for f in files:
-            link = f['links']['self']
-            size = f['size']/2**20
-            eprint(f'Link: {link}   size: {size:.1f}MB')
-            filename = wget.download(link)
-            eprint()
-            checksum = f['checksum']
-            h1, h2 = check_hash(filename, checksum)
-            if h1 == h2:
-                eprint(f'Checksum is correct. ({h1})')
+
+        if options.md5 is not None:
+            with open('md5sums.txt', 'wt') as md5file:
+                for f in files:
+                    fname = f['key']
+                    checksum = f['checksum'].split(':')[-1]
+                    md5file.write('{}  {}\n'.format(checksum, fname))
+
+        if options.wget is not None:
+            if options.wget == '-':
+                for f in files:
+                    link = f['links']['self']
+                    print(link)
             else:
-                eprint(f'Checksum is INCORRECT! expected: {h1} got:{h2})')
-                if not options.keep:
-                    eprint('  File is deleted.')
-                    os.remove(filename)
+                with open(options.wget, 'wt') as wgetfile:
+                    for f in files:
+                        link = f['links']['self']
+                        wgetfile.write('{}\n'.format(link,))
+        else:
+            eprint('Total size: {:.1f} MB'.format(total_size/2**20,))
+            for f in files:
+                link = f['links']['self']
+                size = f['size']/2**20
+                eprint()
+                eprint('Link: {}   size: {:.1f} MB'.format(link, size))
+                fname = f['key']
+                checksum = f['checksum']
+
+                remote_hash, local_hash = check_hash(fname, checksum)
+
+                if remote_hash == local_hash and options.cont:
+                    eprint('{} is already downloaded correctly.'.format(fname))
+                    continue
+
+                for _ in range(options.retry+1):
+                    try:
+                        filename = wget.download(link)
+                    except Exception:
+                        eprint('  Download error.')
+                        time.sleep(options.pause)
+                    else:
+                        break
                 else:
-                    eprint('  File is NOT deleted!')
-                if not options.error:
-                    sys.exit(1)
-        eprint('All files have been downloaded.')
+                    if not options.error:
+                        eprint('  Too many errors, download is aborted.')
+                        sys.exit(0)
+                    eprint('  Too many errors,'
+                           ' download continues with the next file.')
+                    continue
+
+                eprint()
+                h1, h2 = check_hash(filename, checksum)
+                if h1 == h2:
+                    eprint('Checksum is correct. ({})'.format(h1,))
+                else:
+                    eprint('Checksum is INCORRECT!({} got:{})'.format(h1, h2))
+                    if not options.keep:
+                        eprint('  File is deleted.')
+                        os.remove(filename)
+                    else:
+                        eprint('  File is NOT deleted!')
+                    if not options.error:
+                        sys.exit(1)
+            eprint('All files have been downloaded.')
     else:
         eprint('Record could not get accessed.')
         sys.exit(1)
