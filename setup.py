@@ -22,7 +22,7 @@ setuptools.setup(
     description_content_type='text/plain',
     long_description=long_description,
     long_description_content_type='text/markdown',
-    url='https://github.com/dvolgyes/zenodo_get',
+    url='https://gitlab.com/dvolgyes/zenodo_get',
     license='AGPL',
     packages=setuptools.find_packages(),
     scripts=['src/zenodo_get.py'],

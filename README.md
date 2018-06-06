@@ -12,7 +12,7 @@ Codecov: [![codecov](https://codecov.io/gh/dvolgyes/zenodo_get/branch/master/gra
 This is a Python2/3 tool which can mass-download files from Zenodo records.
 
 [![pyversion](https://img.shields.io/pypi/pyversions/zenodo_get.svg)](https://pypi.org/project/zenodo-get/)
-![PyPI - License](https://img.shields.io/pypi/l/zenodo_get.svg)
+[![PyPI - License](https://img.shields.io/pypi/l/zenodo_get.svg)](https://gitlab.com/dvolgyes/zenodo_get/raw/master/LICENSE.txt)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.1261812.svg)](https://doi.org/10.5281/zenodo.1261812)
 
 Source code
