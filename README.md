@@ -86,3 +86,14 @@ Special parameters:
 Remark for batch processing: the program always exits with non-zero exit code, if any error has happened,
 for instance, checksum mismatch, download error, time-out, etc. Only perfectly correct
 downloads end with 0 exit code.
+
+Citation
+--------
+
+You don't really need to cite this software, except if you use it for another academic publication.
+You could always ask the code to print the most up-to-date reference producing plain text and
+bibtex references too:
+
+```
+zenodo_get.py --cite
+```
