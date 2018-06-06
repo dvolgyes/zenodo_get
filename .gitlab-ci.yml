@@ -1,0 +1,12 @@
+image: python:3.5
+
+variables:
+  PYVERSION: 3
+
+test:
+  script:
+  - apt-get update -qy
+  - pip3 --version
+  - pip3 install -r requirements.txt
+  - pip3 install coverage
+  - make test

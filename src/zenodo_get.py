@@ -14,13 +14,27 @@ import time
 __version__ = '1.0.0'
 __title__ = 'zenodo_get'
 __summary__ = 'Zenodo record downloader.'
-__uri__ = 'https://github.com/dvolgyes/zenodo_get'
+__uri__ = 'https://gitlab.com/dvolgyes/zenodo_get'
 __license__ = 'AGPL v3'
 __author__ = 'David Völgyes'
 __email__ = 'david.volgyes@ieee.org'
+__doi__ = '10.5281/zenodo.1261812'
 __description__ = """
-This program is meant to download a Zenodo record using DOI or record ID.
+This program is meant to download complete Zenodo records based
+on the Zenodo record ID or the DOI. The primary goal is to easy access
+to large records with dozens of files.
 """
+__bibtex__ = """@misc{david_volgyes_2018_1261812,
+  author  = {David Völgyes},
+  title   = {Zenodo_get: a downloader for Zenodo records.},
+  month   = june,
+  year    = 2018,
+  doi     = {%s},
+  url     = {https://doi.org/%s}
+}""" % (__doi__, __doi__)
+__reference__ = """David Völgyes. (2018, June 4). \
+Zenodo_get: a downloader for Zenodo records (Version %s).
+Zenodo. https://doi.org/%s""" % (__version__, __doi__)
 
 
 def eprint(*args, **kwargs):
@@ -48,6 +62,13 @@ if __name__ == '__main__':
              usage='%prog [options] RECORD_OR_DOI',
              version='%prog {}'.format(__version__)
              )
+
+    parser.add_option('-c', '--cite',
+                      dest='cite',
+                      action='store_true',
+                      default=False,
+                      help='print citation information')
+
     parser.add_option('-r', '--record',
                       action='store',
                       type='string',
@@ -112,6 +133,14 @@ if __name__ == '__main__':
                       default=0.5)
 
     (options, args) = parser.parse_args()
+
+    if options.cite:
+        print('Reference for this software:')
+        print(__reference__)
+        print()
+        print('Bibtex format:')
+        print(__bibtex__)
+        sys.exit(0)
 
     if len(args) > 0:
         try:
