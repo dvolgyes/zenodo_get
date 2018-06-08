@@ -156,7 +156,11 @@ if __name__ == '__main__':
         url = options.doi
         if not url.startswith('http'):
             url = 'https://doi.org/'+url
-        r = requests.get(url)
+        try:
+            r = requests.get(url)
+        except:
+            eprint('Connection error. Please, check the DOI/ID, and try again later.')
+            sys.exit(1)
         if not r.ok:
             eprint('DOI could not be resolved. Try again, or use record ID.')
             sys.exit(1)
