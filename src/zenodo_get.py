@@ -11,7 +11,8 @@ from optparse import OptionParser
 import wget
 import time
 
-__version__ = '1.0.0'
+
+__version__ = '1.0.1'
 __title__ = 'zenodo_get'
 __summary__ = 'Zenodo record downloader.'
 __uri__ = 'https://gitlab.com/dvolgyes/zenodo_get'
@@ -24,17 +25,17 @@ This program is meant to download complete Zenodo records based
 on the Zenodo record ID or the DOI. The primary goal is to easy access
 to large records with dozens of files.
 """
-__bibtex__ = """@misc{david_volgyes_2018_1261812,
+__bibtex__ = """@misc{david_volgyes_2018_""" + __doi__ + """,
   author  = {David Völgyes},
   title   = {Zenodo_get: a downloader for Zenodo records.},
   month   = june,
   year    = 2018,
-  doi     = {%s},
-  url     = {https://doi.org/%s}
-}""" % (__doi__, __doi__)
+  doi     = {""" + __doi__ + """},
+  url     = {https://doi.org/""" + __doi__ + """}
+}"""
 __reference__ = """David Völgyes. (2018, June 4). \
-Zenodo_get: a downloader for Zenodo records (Version %s).
-Zenodo. https://doi.org/%s""" % (__version__, __doi__)
+Zenodo_get: a downloader for Zenodo records (Version """ + __version__ + """).
+Zenodo. https://doi.org/""" + __doi__
 
 
 def eprint(*args, **kwargs):
@@ -59,9 +60,9 @@ def check_hash(filename, checksum):
 if __name__ == '__main__':
 
     parser = OptionParser(
-             usage='%prog [options] RECORD_OR_DOI',
-             version='%prog {}'.format(__version__)
-             )
+        usage='%prog [options] RECORD_OR_DOI',
+        version='%prog {}'.format(__version__)
+    )
 
     parser.add_option('-c', '--cite',
                       dest='cite',
@@ -132,6 +133,13 @@ if __name__ == '__main__':
                       help='Wait N second before retry attempt, e.g. 0.5',
                       default=0.5)
 
+    parser.add_option('-t', '--time-out',
+                      action='store',
+                      type=float,
+                      dest='timeout',
+                      help='Set connection time-out. Default: 15 [sec].',
+                      default=15.)
+
     (options, args) = parser.parse_args()
 
     if options.cite:
@@ -157,9 +165,12 @@ if __name__ == '__main__':
         if not url.startswith('http'):
             url = 'https://doi.org/'+url
         try:
-            r = requests.get(url)
-        except:
-            eprint('Connection error. Please, check the DOI/ID, and try again later.')
+            r = requests.get(url, timeout=options.timeout)
+        except requests.exceptions.ConnectTimeout:
+            eprint('Connection timeout.')
+            sys.exit(1)
+        except Exception:
+            eprint('Connection error.')
             sys.exit(1)
         if not r.ok:
             eprint('DOI could not be resolved. Try again, or use record ID.')
@@ -170,7 +181,15 @@ if __name__ == '__main__':
     recordID = recordID.strip()
 
     url = 'https://zenodo.org/api/records/'
-    r = requests.get(url+recordID)
+    try:
+        r = requests.get(url+recordID, timeout=options.timeout)
+    except requests.exceptions.ConnectTimeout:
+        eprint('Connection timeout during metadata reading.')
+        sys.exit(1)
+    except Exception:
+        eprint('Connection error during metadata reading.')
+        sys.exit(1)
+
     if r.ok:
         js = json.loads(r.text)
         files = js['files']
@@ -194,7 +213,12 @@ if __name__ == '__main__':
                         link = f['links']['self']
                         wgetfile.write('{}\n'.format(link,))
         else:
+            eprint('Title: {}'.format(js['metadata']['title']))
+            eprint('Keywords: '+(', '.join(js['metadata']['keywords'])))
+            eprint('Publication date: '+js['metadata']['publication_date'])
+            eprint('DOI: '+js['metadata']['doi'])
             eprint('Total size: {:.1f} MB'.format(total_size/2**20,))
+
             for f in files:
                 link = f['links']['self']
                 size = f['size']/2**20

@@ -15,7 +15,7 @@ given deposit. This project aims to solve this situation.
 
 setuptools.setup(
     name='zenodo_get',
-    version='1.0.0',
+    version='1.0.1',
     author='David Volgyes',
     author_email='david.volgyes@ieee.org',
     description=short_description,
