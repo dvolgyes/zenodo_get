@@ -210,8 +210,10 @@ if __name__ == '__main__':
             else:
                 with open(options.wget, 'wt') as wgetfile:
                     for f in files:
-                        link = f['links']['self']
-                        wgetfile.write('{}\n'.format(link,))
+                        fname = f['key']
+                        link = ('https://zenodo.org/record/{}/files/{}\n'
+                                .format(recordID, fname))
+                        wgetfile.write(link)
         else:
             eprint('Title: {}'.format(js['metadata']['title']))
             eprint('Keywords: '+(', '.join(js['metadata']['keywords'])))
