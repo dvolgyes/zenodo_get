@@ -1,0 +1,14 @@
+repos:
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v1.2.3
+    hooks:
+    - id: trailing-whitespace
+    - id: flake8
+    - id: detect-private-key
+    - id: end-of-file-fixer
+    - id: mixed-line-ending
+    - id: check-case-conflict
+    - id: autopep8-wrapper
+    - id: check-yaml
+    - id: check-xml
+    - id: check-vcs-permalinks
