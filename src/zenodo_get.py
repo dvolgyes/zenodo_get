@@ -1,5 +1,6 @@
 #!/usr/bin/python3
-# -*- coding: utf-8 -*-
+# -*- coding: future_fstrings -*-
+
 from __future__ import print_function
 
 import requests
@@ -10,9 +11,9 @@ import os
 from optparse import OptionParser
 import wget
 import time
+import signal
 
-
-__version__ = '1.0.1'
+__version__ = '1.1.0'
 __title__ = 'zenodo_get'
 __summary__ = 'Zenodo record downloader.'
 __uri__ = 'https://gitlab.com/dvolgyes/zenodo_get'
@@ -22,7 +23,7 @@ __email__ = 'david.volgyes@ieee.org'
 __doi__ = '10.5281/zenodo.1261812'
 __description__ = """
 This program is meant to download complete Zenodo records based
-on the Zenodo record ID or the DOI. The primary goal is to easy access
+on the Zenodo record ID or the DOI. The primary goal is to ease access
 to large records with dozens of files.
 """
 __bibtex__ = """@misc{david_volgyes_2018_""" + __doi__ + """,
@@ -40,6 +41,29 @@ Zenodo. https://doi.org/""" + __doi__
 
 def eprint(*args, **kwargs):
     print(*args, file=sys.stderr, **kwargs)
+
+
+def ctrl_c(func):
+    signal.signal(signal.SIGINT, func)
+    return func
+
+
+abort_signal = False
+abort_counter = 0
+
+
+@ctrl_c
+def handle_ctrl_c(*args, **kwargs):
+    global abort_signal
+    global abort_counter
+
+    abort_signal = True
+    abort_counter += 1
+
+    if abort_counter >= 2:
+        eprint()
+        eprint('Immediate abort. There might be unfinished files.')
+        sys.exit(1)
 
 
 def check_hash(filename, checksum):
@@ -61,8 +85,7 @@ if __name__ == '__main__':
 
     parser = OptionParser(
         usage='%prog [options] RECORD_OR_DOI',
-        version='%prog {}'.format(__version__)
-    )
+        version=f'%prog {__version__}')
 
     parser.add_option('-c', '--cite',
                       dest='cite',
@@ -200,7 +223,7 @@ if __name__ == '__main__':
                 for f in files:
                     fname = f['key']
                     checksum = f['checksum'].split(':')[-1]
-                    md5file.write('{}  {}\n'.format(checksum, fname))
+                    md5file.write(f'{checksum}  {fname}\n')
 
         if options.wget is not None:
             if options.wget == '-':
@@ -222,17 +245,21 @@ if __name__ == '__main__':
             eprint('Total size: {:.1f} MB'.format(total_size/2**20,))
 
             for f in files:
+                if abort_signal:
+                    eprint('Download aborted with CTRL+C.')
+                    eprint('Already successfully downloaded files are kept.')
+                    break
                 link = f['links']['self']
                 size = f['size']/2**20
                 eprint()
-                eprint('Link: {}   size: {:.1f} MB'.format(link, size))
+                eprint(f'Link: {link}   size: {size:.1f} MB')
                 fname = f['key']
                 checksum = f['checksum']
 
                 remote_hash, local_hash = check_hash(fname, checksum)
 
                 if remote_hash == local_hash and options.cont:
-                    eprint('{} is already downloaded correctly.'.format(fname))
+                    eprint(f'{fname} is already downloaded correctly.')
                     continue
 
                 for _ in range(options.retry+1):
@@ -254,9 +281,9 @@ if __name__ == '__main__':
                 eprint()
                 h1, h2 = check_hash(filename, checksum)
                 if h1 == h2:
-                    eprint('Checksum is correct. ({})'.format(h1,))
+                    eprint(f'Checksum is correct. ({h1})')
                 else:
-                    eprint('Checksum is INCORRECT!({} got:{})'.format(h1, h2))
+                    eprint(f'Checksum is INCORRECT!({h1} got:{h2})')
                     if not options.keep:
                         eprint('  File is deleted.')
                         os.remove(filename)
@@ -264,7 +291,8 @@ if __name__ == '__main__':
                         eprint('  File is NOT deleted!')
                     if not options.error:
                         sys.exit(1)
-            eprint('All files have been downloaded.')
+            else:
+                eprint('All files have been downloaded.')
     else:
         eprint('Record could not get accessed.')
         sys.exit(1)
