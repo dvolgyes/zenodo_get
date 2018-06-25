@@ -1,14 +1,31 @@
 repos:
--   repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v1.2.3
+-   repo: https://github.com/bemeurer/beautysh
+    rev: '3.8'
     hooks:
+    - id: beautysh
+-   repo: https://github.com/jumanjihouse/pre-commit-hooks
+    rev: '1.7.1'
+    hooks:
+    - id: shellcheck
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v1.3.0
+    hooks:
+    - id: autopep8-wrapper
+    - id: check-added-large-files
+    - id: check-case-conflict
+    - id: check-executables-have-shebangs
+    - id: check-json
+    - id: check-yaml
+    - id: check-xml
+    - id: check-symlinks
+    - id: check-vcs-permalinks
     - id: trailing-whitespace
     - id: flake8
     - id: detect-private-key
     - id: end-of-file-fixer
     - id: mixed-line-ending
-    - id: check-case-conflict
     - id: autopep8-wrapper
-    - id: check-yaml
-    - id: check-xml
-    - id: check-vcs-permalinks
+#-   repo: https://github.com/pre-commit/mirrors-yapf
+#    rev: 'v0.22.0'  # Use the sha / tag you want to point at
+#    hooks:
+#    -   id: yapf

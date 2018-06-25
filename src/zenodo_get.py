@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python
 # -*- coding: future_fstrings -*-
 
 from __future__ import print_function
@@ -15,7 +15,7 @@ import signal
 
 __version__ = '1.1.0'
 __title__ = 'zenodo_get'
-__summary__ = 'Zenodo record downloader.'
+__summary__ = 'Zenodo_get - a downloader for Zenodo records'
 __uri__ = 'https://gitlab.com/dvolgyes/zenodo_get'
 __license__ = 'AGPL v3'
 __author__ = 'David Völgyes'
@@ -26,17 +26,30 @@ This program is meant to download complete Zenodo records based
 on the Zenodo record ID or the DOI. The primary goal is to ease access
 to large records with dozens of files.
 """
-__bibtex__ = """@misc{david_volgyes_2018_""" + __doi__ + """,
+__bibtex__ = (
+    """@misc{david_volgyes_2018_"""
+    + __doi__
+    + """,
   author  = {David Völgyes},
   title   = {Zenodo_get: a downloader for Zenodo records.},
   month   = june,
   year    = 2018,
-  doi     = {""" + __doi__ + """},
-  url     = {https://doi.org/""" + __doi__ + """}
+  doi     = {"""
+    + __doi__
+    + """},
+  url     = {https://doi.org/"""
+    + __doi__
+    + """}
 }"""
-__reference__ = """David Völgyes. (2018, June 4). \
-Zenodo_get: a downloader for Zenodo records (Version """ + __version__ + """).
-Zenodo. https://doi.org/""" + __doi__
+)
+__reference__ = (
+    """David Völgyes. (2018, June 4). \
+Zenodo_get: a downloader for Zenodo records (Version """
+    + __version__
+    + """).
+Zenodo. https://doi.org/"""
+    + __doi__
+)
 
 
 def eprint(*args, **kwargs):
@@ -84,84 +97,115 @@ def check_hash(filename, checksum):
 if __name__ == '__main__':
 
     parser = OptionParser(
-        usage='%prog [options] RECORD_OR_DOI',
-        version=f'%prog {__version__}')
+        usage='%prog [options] RECORD_OR_DOI', version=f'%prog {__version__}'
+    )
 
-    parser.add_option('-c', '--cite',
-                      dest='cite',
-                      action='store_true',
-                      default=False,
-                      help='print citation information')
+    parser.add_option(
+        '-c',
+        '--cite',
+        dest='cite',
+        action='store_true',
+        default=False,
+        help='print citation information',
+    )
 
-    parser.add_option('-r', '--record',
-                      action='store',
-                      type='string',
-                      dest='record',
-                      help='Zenodo record ID',
-                      default=None)
+    parser.add_option(
+        '-r',
+        '--record',
+        action='store',
+        type='string',
+        dest='record',
+        help='Zenodo record ID',
+        default=None,
+    )
 
-    parser.add_option('-d', '--doi',
-                      action='store',
-                      type='string',
-                      dest='doi',
-                      help='Zenodo DOI',
-                      default=None)
+    parser.add_option(
+        '-d',
+        '--doi',
+        action='store',
+        type='string',
+        dest='doi',
+        help='Zenodo DOI',
+        default=None,
+    )
 
-    parser.add_option('-m', '--md5',
-                      action='store_true',
-                      # ~type=bool,
-                      dest='md5',
-                      help='Create md5sums.txt for verification.',
-                      default=False)
+    parser.add_option(
+        '-m',
+        '--md5',
+        action='store_true',
+        # ~type=bool,
+        dest='md5',
+        help='Create md5sums.txt for verification.',
+        default=False,
+    )
 
-    parser.add_option('-w', '--wget',
-                      action='store',
-                      type='string',
-                      dest='wget',
-                      help='Create URL list for download managers. '
-                      '(Files will not be downloaded.)',
-                      default=None)
+    parser.add_option(
+        '-w',
+        '--wget',
+        action='store',
+        type='string',
+        dest='wget',
+        help='Create URL list for download managers. '
+        '(Files will not be downloaded.)',
+        default=None,
+    )
 
-    parser.add_option('-e', '--continue-on-error',
-                      action='store_true',
-                      dest='error',
-                      help='Continue with next file if error happens.',
-                      default=False)
+    parser.add_option(
+        '-e',
+        '--continue-on-error',
+        action='store_true',
+        dest='error',
+        help='Continue with next file if error happens.',
+        default=False,
+    )
 
-    parser.add_option('-k', '--keep',
-                      action='store_true',
-                      dest='keep',
-                      help='Keep files with invalid checksum.'
-                      ' (Default: delete them.)',
-                      default=False)
+    parser.add_option(
+        '-k',
+        '--keep',
+        action='store_true',
+        dest='keep',
+        help='Keep files with invalid checksum.' ' (Default: delete them.)',
+        default=False,
+    )
 
-    parser.add_option('-n', '--do-not-continue',
-                      action='store_false',
-                      dest='cont',
-                      help='Do not continue previous download attempt.'
-                      ' (Default: continue.)',
-                      default=True)
+    parser.add_option(
+        '-n',
+        '--do-not-continue',
+        action='store_false',
+        dest='cont',
+        help='Do not continue previous download attempt. (Default: continue.)',
+        default=True,
+    )
 
-    parser.add_option('-R', '--retry',
-                      action='store',
-                      type=int,
-                      dest='retry',
-                      help='Retry on error N more times.',
-                      default=0)
+    parser.add_option(
+        '-R',
+        '--retry',
+        action='store',
+        type=int,
+        dest='retry',
+        help='Retry on error N more times.',
+        default=0,
+    )
 
-    parser.add_option('-p', '--pause',
-                      action='store',
-                      type=float,
-                      dest='pause',
-                      help='Wait N second before retry attempt, e.g. 0.5',
-                      default=0.5)
+    parser.add_option(
+        '-p',
+        '--pause',
+        action='store',
+        type=float,
+        dest='pause',
+        help='Wait N second before retry attempt, e.g. 0.5',
+        default=0.5,
+    )
 
-    parser.add_option('-t', '--time-out',
-                      action='store',
-                      type=float,
-                      dest='timeout',
-                      help='Set connection time-out. Default: 15 [sec].',
-                      default=15.)
+    parser.add_option(
+        '-t',
+        '--time-out',
+        action='store',
+        type=float,
+        dest='timeout',
+        help='Set connection time-out. Default: 15 [sec].',
+        default=15.,
+    )
 
     (options, args) = parser.parse_args()
 
@@ -186,7 +230,7 @@ if __name__ == '__main__':
     if options.doi is not None:
         url = options.doi
         if not url.startswith('http'):
-            url = 'https://doi.org/'+url
+            url = 'https://doi.org/' + url
         try:
             r = requests.get(url, timeout=options.timeout)
         except requests.exceptions.ConnectTimeout:
@@ -205,7 +249,7 @@ if __name__ == '__main__':
 
     url = 'https://zenodo.org/api/records/'
     try:
-        r = requests.get(url+recordID, timeout=options.timeout)
+        r = requests.get(url + recordID, timeout=options.timeout)
     except requests.exceptions.ConnectTimeout:
         eprint('Connection timeout during metadata reading.')
         sys.exit(1)
@@ -234,15 +278,16 @@ if __name__ == '__main__':
                 with open(options.wget, 'wt') as wgetfile:
                     for f in files:
                         fname = f['key']
-                        link = ('https://zenodo.org/record/{}/files/{}\n'
-                                .format(recordID, fname))
-                        wgetfile.write(link)
+                        link = 'https://zenodo.org/record/{}/files/{}'.format(
+                            recordID, fname
+                        )
+                        wgetfile.write(link+'\n')
         else:
             eprint('Title: {}'.format(js['metadata']['title']))
-            eprint('Keywords: '+(', '.join(js['metadata']['keywords'])))
-            eprint('Publication date: '+js['metadata']['publication_date'])
-            eprint('DOI: '+js['metadata']['doi'])
-            eprint('Total size: {:.1f} MB'.format(total_size/2**20,))
+            eprint('Keywords: ' + (', '.join(js['metadata']['keywords'])))
+            eprint('Publication date: ' + js['metadata']['publication_date'])
+            eprint('DOI: ' + js['metadata']['doi'])
+            eprint('Total size: {:.1f} MB'.format(total_size / 2 ** 20))
 
             for f in files:
                 if abort_signal:
@@ -250,7 +295,7 @@ if __name__ == '__main__':
                     eprint('Already successfully downloaded files are kept.')
                     break
                 link = f['links']['self']
-                size = f['size']/2**20
+                size = f['size'] / 2 ** 20
                 eprint()
                 eprint(f'Link: {link}   size: {size:.1f} MB')
                 fname = f['key']
@@ -262,7 +307,7 @@ if __name__ == '__main__':
                     eprint(f'{fname} is already downloaded correctly.')
                     continue
 
-                for _ in range(options.retry+1):
+                for _ in range(options.retry + 1):
                     try:
                         filename = wget.download(link)
                     except Exception:
@@ -271,11 +316,11 @@ if __name__ == '__main__':
                     else:
                         break
                 else:
+                    eprint('  Too many errors.')
                     if not options.error:
-                        eprint('  Too many errors, download is aborted.')
+                        eprint('  Download is aborted.')
                         sys.exit(0)
-                    eprint('  Too many errors,'
-                           ' download continues with the next file.')
+                    eprint('  Download continues with the next file.')
                     continue
 
                 eprint()
