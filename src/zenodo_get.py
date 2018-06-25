@@ -94,7 +94,9 @@ def check_hash(filename, checksum):
     return value, digest
 
 
-if __name__ == '__main__':
+def zenodo_get(argv=None):
+    if argv is None:
+        argv = sys.argv[1:]
 
     parser = OptionParser(
         usage='%prog [options] RECORD_OR_DOI', version=f'%prog {__version__}'
@@ -207,7 +209,7 @@ if __name__ == '__main__':
         default=15.,
     )
 
-    (options, args) = parser.parse_args()
+    (options, args) = parser.parse_args(argv)
 
     if options.cite:
         print('Reference for this software:')
@@ -219,8 +221,7 @@ if __name__ == '__main__':
 
     if len(args) > 0:
         try:
-            t = int(args[0])
-            options.record = args[0]
+            options.record = str(int(args[0]))
         except ValueError:
             options.doi = args[0]
     elif options.doi is None and options.record is None:
@@ -341,3 +342,7 @@ if __name__ == '__main__':
     else:
         eprint('Record could not get accessed.')
         sys.exit(1)
+
+
+if __name__ == '__main__':
+    zenodo_get()

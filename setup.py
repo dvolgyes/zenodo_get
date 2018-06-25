@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import setuptools
-import src.zenodo_get as zget
+from src import zenodo_get as zget
 
 setuptools.setup(
     name=zget.__title__,
