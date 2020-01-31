@@ -7,7 +7,7 @@ environment:
                           # of 32 bit and 64 bit builds are needed, move this
                           # to the matrix section.
     matrix:
-        - PYTHON_VERSION: "3.6"
+        - PYTHON_VERSION: "3.7"
           NUMPY_VERSION: "stable"
 
 matrix:

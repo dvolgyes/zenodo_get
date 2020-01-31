@@ -4,28 +4,25 @@ matrix:
     fast_finish: true
     include:
         - os: linux
-          dist: trusty
+          dist: bionic
           sudo: required
           python: 3.6
-          env: PYVERSION="3"
 
         - os: linux
-          dist: trusty
+          dist: bionic
           sudo: required
-          python: 3.5
-          env: PYVERSION="3"
+          python: 3.7
 
         - os: linux
-          dist: trusty
+          dist: bionic
           sudo: required
-          python: 2.7
-          env: PYVERSION="2"
+          python: 3.8
 
 install:
-    - pip${PYVERSION} install --upgrade pip setuptools wheel
-    - pip${PYVERSION} install coveralls codecov pyflakes
-    - pip${PYVERSION} install -r requirements.txt
-    - pip${PYVERSION} install git+https://github.com/dvolgyes/zenodo_get
+    - pip install --upgrade pip setuptools wheel
+    - pip install coveralls codecov pyflakes
+    - pip install -r requirements.txt
+    - pip install git+https://github.com/dvolgyes/zenodo_get
 
 script:
   - make test

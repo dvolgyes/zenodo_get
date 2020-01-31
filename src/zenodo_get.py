@@ -1,7 +1,5 @@
 #!/usr/bin/env python
-# -*- coding: future_fstrings -*-
 
-from __future__ import print_function
 
 import requests
 import json
@@ -13,7 +11,7 @@ import wget
 import time
 import signal
 
-__version__ = '1.1.1'
+__version__ = '1.2.0'
 __title__ = 'zenodo_get'
 __summary__ = 'Zenodo_get - a downloader for Zenodo records'
 __uri__ = 'https://gitlab.com/dvolgyes/zenodo_get'

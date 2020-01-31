@@ -1,7 +1,6 @@
-image: python:3.5
+image: python:3.7
 
 variables:
-  PYVERSION: 3
 
 test:
   script:
