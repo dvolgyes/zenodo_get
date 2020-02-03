@@ -280,10 +280,11 @@ def zenodo_get(argv=None):
                         link = 'https://zenodo.org/record/{}/files/{}'.format(
                             recordID, fname
                         )
-                        wgetfile.write(link+'\n')
+                        wgetfile.write(link + '\n')
         else:
             eprint('Title: {}'.format(js['metadata']['title']))
-            eprint('Keywords: ' + (', '.join(js['metadata'].get('keywords', []))))
+            eprint('Keywords: ' +
+                   (', '.join(js['metadata'].get('keywords', []))))
             eprint('Publication date: ' + js['metadata']['publication_date'])
             eprint('DOI: ' + js['metadata']['doi'])
             eprint('Total size: {:.1f} MB'.format(total_size / 2 ** 20))
