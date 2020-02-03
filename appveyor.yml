@@ -23,7 +23,7 @@ install:
     - "activate test"
     - "%CMD_IN_ENV% pip install -r requirements.txt"
     - "%CMD_IN_ENV% pip install git+https://github.com/dvolgyes/zenodo_get"
-    - choco install wget
+    - choco install --accept-license wget
 
 build: off
 
