@@ -17,8 +17,8 @@ setuptools.setup(
     packages=setuptools.find_packages(),
     scripts=['src/zenodo_get.py'],
     python_requires='>=3.6',
-    setup_requires=['future-fstrings'],
-    install_requires=['requests', 'wget', 'future-fstrings'],
+    setup_requires=[],
+    install_requires=['requests', 'wget'],
     keywords='zenodo download',
     classifiers=(
         'Development Status :: 4 - Beta',

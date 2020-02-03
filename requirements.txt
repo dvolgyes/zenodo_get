@@ -1,3 +1,2 @@
 wget
 requests
-future-fstrings
