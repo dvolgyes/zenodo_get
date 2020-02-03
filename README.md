@@ -3,13 +3,15 @@ zenodo_get: a downloader for Zenodo records
 Travis:[![Build Status](https://travis-ci.org/dvolgyes/zenodo_get.svg?branch=master)](https://travis-ci.org/dvolgyes/zenodo_get)
 Semaphore:[![Build Status](https://semaphoreci.com/api/v1/dvolgyes/zenodo_get/branches/master/badge.svg)](https://semaphoreci.com/dvolgyes/zenodo_get)
 CircleCI:[![Build status](https://circleci.com/gh/dvolgyes/zenodo_get.svg?style=svg)](https://circleci.com/gh/dvolgyes/zenodo_get)
+
 AppVeyor:[![Build status](https://ci.appveyor.com/api/projects/status/f6hw96rhdl104ch9?svg=true)](https://ci.appveyor.com/project/dvolgyes/zenodo-get)
 GitlabCI:[![pipeline status](https://gitlab.com/dvolgyes/zenodo_get/badges/master/pipeline.svg)](https://gitlab.com/dvolgyes/zenodo_get/commits/master)
 
 
 Coveralls:[![Coverage Status](https://coveralls.io/repos/github/dvolgyes/zenodo_get/badge.svg?branch=master)](https://coveralls.io/github/dvolgyes/zenodo_get?branch=master)
 Codecov:[![codecov](https://codecov.io/gh/dvolgyes/zenodo_get/branch/master/graph/badge.svg)](https://codecov.io/gh/dvolgyes/zenodo_get)
-Snyk:[![Known Vulnerabilities](https://snyk.io/test/github/dvolgyes/zenodo_get/badge.svg?targetFile=requirements.txt)](https://snyk.io/test/github/dvolgyes/zenodo_get?targetFile=requirements.txt)
+Snyk:[![Known Vulnerabilities](https://snyk.io/test/github/dvolgyes/zenodo_get/badge.svg)](https://snyk.io/test/github/dvolgyes/zenodo_get)
+
 
 This is a Python2/3 tool which can mass-download files from Zenodo records.
 
