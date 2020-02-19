@@ -2,6 +2,7 @@ zenodo_get: a downloader for Zenodo records
 ===========================================
 Travis:[![Build Status](https://travis-ci.org/dvolgyes/zenodo_get.svg?branch=master)](https://travis-ci.org/dvolgyes/zenodo_get)
 CircleCI:[![Build status](https://circleci.com/gh/dvolgyes/zenodo_get.svg?style=svg)](https://circleci.com/gh/dvolgyes/zenodo_get)
+SemaphoreCI:[![Build Status](https://semaphoreci.com/api/v1/dvolgyes/zenodo_get/branches/master/badge.svg)](https://semaphoreci.com/dvolgyes/zenodo_get)
 
 AppVeyor:[![Build status](https://ci.appveyor.com/api/projects/status/f6hw96rhdl104ch9?svg=true)](https://ci.appveyor.com/project/dvolgyes/zenodo-get)
 GitlabCI:[![pipeline status](https://gitlab.com/dvolgyes/zenodo_get/badges/master/pipeline.svg)](https://gitlab.com/dvolgyes/zenodo_get/commits/master)
@@ -93,7 +94,7 @@ Citation
 --------
 
 You don't really need to cite this software, except if you use it for another academic publication.
-E.g. if you download something from Zenodo: no need to cite it. 
+E.g. if you download something from Zenodo with zenodo-get: no need to cite anything.
 If you download a lot from Zenodo, and you publish about Zenodo,
 and my tool is integral part of the methodology, then you could cite it.
 You could always ask the code to print the most up-to-date reference producing plain text and
