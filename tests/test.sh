@@ -1,6 +1,7 @@
 #!/bin/bash
 set -e
-cd ..
+
+pwd
 
 PYTHON="python3 -m coverage run -a --source src/"
 $PYTHON ./zenodo_get.py
