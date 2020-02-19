@@ -45,8 +45,7 @@ jobs:
           name: run tests
           command: |
             . venv/bin/activate
-            make test
-            make ci-test
+            sh tests/test.sh
             python -m codecov
 
       - store_artifacts:
