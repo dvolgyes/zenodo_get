@@ -8,4 +8,4 @@ test:
   - pip3 --version
   - pip3 install -r requirements.txt
   - pip3 install coverage
-  - make test
+  - sh tests/test.sh
