@@ -1,7 +1,6 @@
 zenodo_get: a downloader for Zenodo records
 ===========================================
 Travis:[![Build Status](https://travis-ci.org/dvolgyes/zenodo_get.svg?branch=master)](https://travis-ci.org/dvolgyes/zenodo_get)
-Semaphore:[![Build Status](https://semaphoreci.com/api/v1/dvolgyes/zenodo_get/branches/master/badge.svg)](https://semaphoreci.com/dvolgyes/zenodo_get)
 CircleCI:[![Build status](https://circleci.com/gh/dvolgyes/zenodo_get.svg?style=svg)](https://circleci.com/gh/dvolgyes/zenodo_get)
 
 AppVeyor:[![Build status](https://ci.appveyor.com/api/projects/status/f6hw96rhdl104ch9?svg=true)](https://ci.appveyor.com/project/dvolgyes/zenodo-get)
@@ -22,10 +21,8 @@ This is a Python3 tool which can mass-download files from Zenodo records.
 Source code
 -----------
 
-The code is hosted at Github and GitLab too, with the exact same content.
-However, on long term, the project will migrate to GitLab, so please, use the GitLab site:
-[https://gitlab.com/dvolgyes/zenodo_get](https://gitlab.com/dvolgyes/zenodo_get)
-
+The code is hosted at Github and GitLab too, with the exact content.
+(except some temporary differences until synchronization)
 
 Install
 -------
@@ -35,9 +32,10 @@ From PyPI:
 pip3 install zenodo_get
 ```
 
-Or from Gitlab:
+Or from Gitlab/Github:
 ```
 pip3 install git+https://gitlab.com/dvolgyes/zenodo_get
+pip3 install git+https://github.com/dvolgyes/zenodo_get
 ```
 
 
@@ -95,6 +93,9 @@ Citation
 --------
 
 You don't really need to cite this software, except if you use it for another academic publication.
+E.g. if you download something from Zenodo: no need to cite it. 
+If you download a lot from Zenodo, and you publish about Zenodo,
+and my tool is integral part of the methodology, then you could cite it.
 You could always ask the code to print the most up-to-date reference producing plain text and
 bibtex references too:
 
