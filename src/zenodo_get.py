@@ -11,7 +11,7 @@ import wget
 import time
 import signal
 
-__version__ = '1.2.0'
+__version__ = '1.2.1'
 __title__ = 'zenodo_get'
 __summary__ = 'Zenodo_get - a downloader for Zenodo records'
 __uri__ = 'https://gitlab.com/dvolgyes/zenodo_get'

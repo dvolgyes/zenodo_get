@@ -8,12 +8,12 @@ AppVeyor:[![Build status](https://ci.appveyor.com/api/projects/status/f6hw96rhdl
 GitlabCI:[![pipeline status](https://gitlab.com/dvolgyes/zenodo_get/badges/master/pipeline.svg)](https://gitlab.com/dvolgyes/zenodo_get/commits/master)
 
 
-Coveralls:[![Coverage Status](https://coveralls.io/repos/github/dvolgyes/zenodo_get/badge.svg?branch=master)](https://coveralls.io/github/dvolgyes/zenodo_get?branch=master)
+Coveralls:[![Coverage Status](https://img.shields.io/coveralls/github/dvolgyes/zenodo_get/master)](https://coveralls.io/github/dvolgyes/zenodo_get?branch=master)
 Codecov:[![codecov](https://codecov.io/gh/dvolgyes/zenodo_get/branch/master/graph/badge.svg)](https://codecov.io/gh/dvolgyes/zenodo_get)
 Snyk:[![Known Vulnerabilities](https://snyk.io/test/github/dvolgyes/zenodo_get/badge.svg)](https://snyk.io/test/github/dvolgyes/zenodo_get)
 
 
-This is a Python2/3 tool which can mass-download files from Zenodo records.
+This is a Python3 tool which can mass-download files from Zenodo records.
 
 [![pyversion](https://img.shields.io/pypi/pyversions/zenodo_get.svg)](https://pypi.org/project/zenodo-get/)
 [![PyPI - License](https://img.shields.io/pypi/l/zenodo_get.svg)](https://gitlab.com/dvolgyes/zenodo_get/raw/master/LICENSE.txt)
