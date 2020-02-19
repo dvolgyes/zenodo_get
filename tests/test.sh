@@ -1,11 +1,10 @@
 #!/bin/bash
 set -e
 
-pwd
-
 PYTHON="python3 -m coverage run -a --source src/"
 $PYTHON src/zenodo_get.py
 $PYTHON src/zenodo_get.py -h
+$PYTHON src/zenodo_get.py --cite
 
 # tests expected to fail
 $PYTHON src/zenodo_get.py invalid_doi && false || true
