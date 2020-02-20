@@ -15,7 +15,9 @@ setuptools.setup(
     url=zget.__uri__,
     license=zget.__license__,
     packages=setuptools.find_packages(),
-    entry_points={'console_scripts': ['zenodo_get = zenodo_get:zenodo_get']},
+    entry_points={'console_scripts': [
+                      'zenodo_get = zenodo_get.__main__:zenodo_get'
+                      ]},
     python_requires='>=3.6',
     setup_requires=[],
     install_requires=['requests', 'wget'],
