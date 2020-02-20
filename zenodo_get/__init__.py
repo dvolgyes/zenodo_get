@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-__version__ = '1.2.1'
+__version__ = '1.3.0'
 __title__ = 'zenodo_get'
 __summary__ = 'Zenodo_get - a downloader for Zenodo records'
 __uri__ = 'https://gitlab.com/dvolgyes/zenodo_get'
@@ -14,13 +14,13 @@ on the Zenodo record ID or the DOI. The primary goal is to ease access
 to large records with dozens of files.
 """
 __bibtex__ = (
-    """@misc{david_volgyes_2018_"""
+    """@misc{david_volgyes_2020_"""
     + __doi__
     + """,
   author  = {David Völgyes},
   title   = {Zenodo_get: a downloader for Zenodo records.},
-  month   = june,
-  year    = 2018,
+  month   = {2},
+  year    = {2020},
   doi     = {"""
     + __doi__
     + """},
@@ -30,7 +30,7 @@ __bibtex__ = (
 }"""
 )
 __reference__ = (
-    """David Völgyes. (2018, June 4). \
+    """David Völgyes. (2020, February 20). \
 Zenodo_get: a downloader for Zenodo records (Version """
     + __version__
     + """).
