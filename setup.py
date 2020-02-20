@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import setuptools
-from src import zenodo_get as zget
+import zenodo_get as zget
 
 setuptools.setup(
     name=zget.__title__,
@@ -15,12 +15,12 @@ setuptools.setup(
     url=zget.__uri__,
     license=zget.__license__,
     packages=setuptools.find_packages(),
-    scripts=['src/zenodo_get.py'],
+    entry_points={'console_scripts': ['zenodo_get = zenodo_get:zenodo_get']},
     python_requires='>=3.6',
     setup_requires=[],
     install_requires=['requests', 'wget'],
     keywords='zenodo download',
-    classifiers=(
+    classifiers=[
         'Development Status :: 4 - Beta',
         'Operating System :: OS Independent',
         'Programming Language :: Python',
@@ -30,5 +30,5 @@ setuptools.setup(
         'Programming Language :: Python :: 3.8',
         'Intended Audience :: Science/Research',
         'License :: OSI Approved :: GNU Affero General Public License v3',
-    ),
+    ],
 )

@@ -1,22 +1,22 @@
 #!/bin/bash
 set -e
 
-PYTHON="python3 -m coverage run -a --source src/"
-$PYTHON src/zenodo_get.py
-$PYTHON src/zenodo_get.py -h
-$PYTHON src/zenodo_get.py --cite
+PYTHON="python3 -m coverage run -a --source zenodo_get"
+$PYTHON zenodo_get
+$PYTHON zenodo_get -h
+$PYTHON zenodo_get --cite
 
 # tests expected to fail
-$PYTHON src/zenodo_get.py invalid_doi && false || true
-$PYTHON src/zenodo_get.py -1 x && false || true
-$PYTHON src/zenodo_get.py 0 x && false || true
-$PYTHON src/zenodo_get.py https://invalid && false || true
+$PYTHON zenodo_get invalid_doi && false || true
+$PYTHON zenodo_get -1 x && false || true
+$PYTHON zenodo_get 0 x && false || true
+$PYTHON zenodo_get https://invalid && false || true
 
 # tests expected to pass
-$PYTHON src/zenodo_get.py 1215979 -m -e -k
-$PYTHON src/zenodo_get.py -r 1215979 -w urls.txt -n
-$PYTHON src/zenodo_get.py -r 1215979 -w -
-$PYTHON src/zenodo_get.py 10.5281/zenodo.1215979 -R 3 -p 2 -n
-$PYTHON src/zenodo_get.py -d 10.5281/zenodo.1215979
+$PYTHON zenodo_get 1215979 -m -e -k
+$PYTHON zenodo_get -r 1215979 -w urls.txt -n
+$PYTHON zenodo_get -r 1215979 -w -
+$PYTHON zenodo_get 10.5281/zenodo.1215979 -R 3 -p 2 -n
+$PYTHON zenodo_get -d 10.5281/zenodo.1215979
 
 echo "  TESTS ARE OK!  "
