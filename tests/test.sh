@@ -1,7 +1,7 @@
 #!/bin/bash
 set -e
 
-CMD="python3 -m coverage run -a --source zenodo_get -m zenodo_get "
+CMD="python3 -m coverage run -a --source zenodo_get -m zenodo_get"
 $CMD 
 $CMD  -h
 $CMD  --cite
