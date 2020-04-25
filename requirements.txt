@@ -1,2 +1,2 @@
-wget
+wget==3.2
 requests
