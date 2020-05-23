@@ -17,18 +17,20 @@ def eprint(*args, **kwargs):
 
 
 def ctrl_c(func):
+
     signal.signal(signal.SIGINT, func)
     return func
 
 
 abort_signal = False
 abort_counter = 0
-
+exceptions = False
 
 @ctrl_c
 def handle_ctrl_c(*args, **kwargs):
     global abort_signal
     global abort_counter
+    global exceptions
 
     abort_signal = True
     abort_counter += 1
@@ -36,7 +38,10 @@ def handle_ctrl_c(*args, **kwargs):
     if abort_counter >= 2:
         eprint()
         eprint('Immediate abort. There might be unfinished files.')
-        sys.exit(1)
+        if exceptions:
+            raise Exception('Immediate abort')
+        else:
+            sys.exit(1)
 
 
 def check_hash(filename, checksum):
@@ -55,8 +60,13 @@ def check_hash(filename, checksum):
 
 
 def zenodo_get(argv=None):
+    global exceptions
+
     if argv is None:
         argv = sys.argv[1:]
+        exceptions = False
+    else:
+        exceptions = True
 
     parser = OptionParser(
         usage='%prog [options] RECORD_OR_DOI',
@@ -178,7 +188,10 @@ def zenodo_get(argv=None):
         print()
         print('Bibtex format:')
         print(zget.__bibtex__)
-        sys.exit(0)
+        if exceptions:
+            return
+        else:
+            sys.exit(0)
 
     if len(args) > 0:
         try:
@@ -187,7 +200,10 @@ def zenodo_get(argv=None):
             options.doi = args[0]
     elif options.doi is None and options.record is None:
         parser.print_help()
-        sys.exit(0)
+        if exceptions:
+            return
+        else:
+            sys.exit(0)
 
     if options.doi is not None:
         url = options.doi
@@ -197,13 +213,23 @@ def zenodo_get(argv=None):
             r = requests.get(url, timeout=options.timeout)
         except requests.exceptions.ConnectTimeout:
             eprint('Connection timeout.')
-            sys.exit(1)
+            if exceptions:
+                raise
+            else:
+                sys.exit(1)
         except Exception:
             eprint('Connection error.')
-            sys.exit(1)
+            if exceptions:
+                raise
+            else:
+                sys.exit(1)
         if not r.ok:
             eprint('DOI could not be resolved. Try again, or use record ID.')
-            sys.exit(1)
+            if exceptions:
+                raise ValueError('DOI', options.doi)
+            else:
+                sys.exit(1)
+
         recordID = r.url.split('/')[-1]
     else:
         recordID = options.record
@@ -214,10 +240,16 @@ def zenodo_get(argv=None):
         r = requests.get(url + recordID, timeout=options.timeout)
     except requests.exceptions.ConnectTimeout:
         eprint('Connection timeout during metadata reading.')
-        sys.exit(1)
+        if exceptions:
+            raise
+        else:
+            sys.exit(1)
     except Exception:
         eprint('Connection error during metadata reading.')
-        sys.exit(1)
+        if exceptions:
+            raise
+        else:
+            sys.exit(1)
 
     if r.ok:
         js = json.loads(r.text)
@@ -282,7 +314,10 @@ def zenodo_get(argv=None):
                     eprint('  Too many errors.')
                     if not options.error:
                         eprint('  Download is aborted.')
-                        sys.exit(0)
+                        if exceptions:
+                            raise Exception('too  many errors')
+                        else:
+                            sys.exit(1)
                     eprint('  Download continues with the next file.')
                     continue
 
@@ -303,7 +338,10 @@ def zenodo_get(argv=None):
                 eprint('All files have been downloaded.')
     else:
         eprint('Record could not get accessed.')
-        sys.exit(1)
+        if exceptions:
+            raise Exception('Record could not get accessed.')
+        else:
+            sys.exit(1)
 
 
 if __name__ == '__main__':
