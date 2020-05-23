@@ -39,7 +39,7 @@ Zenodo. https://doi.org/"""
 )
 
 try: # wget and other libs might not be present at installation
-    from .__main__ import zenodo_get 
+    from .zget import zenodo_get
     __all__ = ['zenodo_get']
 except:
     pass
