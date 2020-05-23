@@ -29,3 +29,8 @@ repos:
 #    rev: 'v0.22.0'  # Use the sha / tag you want to point at
 #    hooks:
 #    -   id: yapf
+repos:
+-   repo: https://github.com/chriselion/pymarkdown-link-check
+    rev: 73773dc402a94ac36addad0492a78f1b19d4a3fe
+    hooks:
+    - id: pymarkdown-link-check
