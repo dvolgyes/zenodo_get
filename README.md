@@ -42,12 +42,12 @@ pip3 install git+https://github.com/dvolgyes/zenodo_get
 
 Afterwards, you can query the command line options:
 ```
-zenodo_get.py -h
+zenodo_get -h
 ```
 
 but the default settings should work for most use cases:
 ```
-zenodo_get.py RECORD_ID_OR_DOI
+zenodo_get RECORD_ID_OR_DOI
 ```
 
 
@@ -56,14 +56,14 @@ Documentation
 The tool itself is simple, and the help message is reasonable:
 
 ```
-zenodo_get.py -h
+zenodo_get -h
 ```
 
 but if you need more, open a github ticket and explain what is missing.
 
 Basic usage:
 ```
-zenodo_get.py RECORD_ID_OR_DOI
+zenodo_get RECORD_ID_OR_DOI
 ```
 
 Special parameters:
@@ -101,5 +101,5 @@ You could always ask the code to print the most up-to-date reference producing p
 bibtex references too:
 
 ```
-zenodo_get.py --cite
+zenodo_get --cite
 ```
