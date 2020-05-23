@@ -37,3 +37,9 @@ Zenodo_get: a downloader for Zenodo records (Version """
 Zenodo. https://doi.org/"""
     + __doi__
 )
+
+try: # wget and other libs might not be present at installation
+    from .__main__ import zenodo_get 
+    __all__ = ['zenodo_get']
+except:
+    pass
