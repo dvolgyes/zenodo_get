@@ -203,6 +203,15 @@ def zenodo_get(argv=None):
         help='Output directory, created if necessary. Default: current directory.',
     )
 
+    parser.add_option(
+        '-s',
+        '--sandbox',
+        action='store_true',
+        dest='sandbox',
+        help='Use Zenodo Sandbox URL.',
+        default=False,
+    )
+
     (options, args) = parser.parse_args(argv)
 
     if options.cite:
@@ -262,7 +271,11 @@ def zenodo_get(argv=None):
             recordID = options.record
         recordID = recordID.strip()
 
-        url = 'https://zenodo.org/api/records/'
+        if not options.sandbox:
+            url = 'https://zenodo.org/api/records/'
+        else:
+            url = 'https://sandbox.zenodo.org/api/records/'
+
         try:
             r = requests.get(url + recordID, timeout=options.timeout)
         except requests.exceptions.ConnectTimeout:
