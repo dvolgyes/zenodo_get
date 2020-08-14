@@ -18,6 +18,11 @@ matrix:
           sudo: required
           python: 3.8
 
+        - os: linux
+          dist: bionic
+          sudo: required
+          python: nightly
+
 install:
     - pip install --upgrade pip setuptools wheel
     - pip install coveralls codecov pyflakes
