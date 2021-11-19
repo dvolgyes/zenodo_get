@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-__version__ = '1.3.3'
+__version__ = '1.3.4'
 __title__ = 'zenodo_get'
 __summary__ = 'Zenodo_get - a downloader for Zenodo records'
 __uri__ = 'https://gitlab.com/dvolgyes/zenodo_get'
