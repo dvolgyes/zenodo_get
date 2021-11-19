@@ -14,6 +14,7 @@ import signal
 from pathlib import Path
 from contextlib import contextmanager
 import os
+from urllib.parse import unquote
 
 #see https://stackoverflow.com/questions/431684/how-do-i-change-the-working-directory-in-python/24176022#24176022
 @contextmanager
@@ -344,9 +345,10 @@ def zenodo_get(argv=None):
 
                     for _ in range(options.retry + 1):
                         try:
+                            link = url = unquote(link)
                             filename = wget.download(link)
                         except Exception:
-                            eprint('  Download error.')
+                            eprint(f'  Download error. Original link: {link}')
                             time.sleep(options.pause)
                         else:
                             break
