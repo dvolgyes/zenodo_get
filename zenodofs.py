@@ -1,14 +1,21 @@
 #!/usr/bin/env python3
 
 from time import time
-import requests
 import json
-from box import SBox
-from functools import lru_cache as cache
 
+from functools import lru_cache as cache
 import logging
-from fuse import FUSE, Operations, LoggingMixIn
 from stat import S_IFREG, S_IFDIR
+import sys
+
+try:
+    import requests
+    from box import SBox
+    from fuse import FUSE, Operations, LoggingMixIn
+except ImportError as e:
+    logging.getLogger().critical(e)
+    logging.getLogger().critical('You need to install python-box, requests and fusepy.')
+    sys.exit(1)
 
 
 class WebFile:
@@ -216,7 +223,7 @@ if __name__ == '__main__':
                         default='error',
                         const='error',
                         nargs='?',
-                        choices=['critica', 'error', 'warning', 'info', 'debug'],
+                        choices=['critical', 'error', 'warning', 'info', 'debug'],
                         help='log level (default: error)')
 
     parser.add_argument("-f", "--foreground", action="store_true", default=False)
