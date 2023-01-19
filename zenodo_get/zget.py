@@ -344,9 +344,11 @@ def zenodo_get(argv=None):
                         continue
 
                     for _ in range(options.retry + 1):
+                        link = url = unquote(link)
+                        # preserve dataset hierarchy, ensure dir exists
+                        Path(fname).parent.mkdir(parents=True, exist_ok=True)
                         try:
-                            link = url = unquote(link)
-                            filename = wget.download(link)
+                            wget.download(link, out=fname)
                         except Exception:
                             eprint(f'  Download error. Original link: {link}')
                             time.sleep(options.pause)
@@ -364,14 +366,14 @@ def zenodo_get(argv=None):
                         continue
 
                     eprint()
-                    h1, h2 = check_hash(filename, checksum)
+                    h1, h2 = check_hash(fname, checksum)
                     if h1 == h2:
                         eprint(f'Checksum is correct. ({h1})')
                     else:
                         eprint(f'Checksum is INCORRECT!({h1} got:{h2})')
                         if not options.keep:
                             eprint('  File is deleted.')
-                            os.remove(filename)
+                            os.remove(fname)
                         else:
                             eprint('  File is NOT deleted!')
                         if not options.error:
