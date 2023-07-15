@@ -18,7 +18,7 @@ setuptools.setup(
     entry_points={'console_scripts': [
                       'zenodo_get = zenodo_get.zget:zenodo_get'
                       ]},
-    python_requires='>=3.6',
+    python_requires='>=3.8',
     setup_requires=[],
     install_requires=['requests', 'wget'],
     keywords='zenodo download',
@@ -27,11 +27,9 @@ setuptools.setup(
         'Operating System :: OS Independent',
         'Programming Language :: Python',
         'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.6',
-        'Programming Language :: Python :: 3.7',
-        'Programming Language :: Python :: 3.8',
         'Programming Language :: Python :: 3.9',
         'Programming Language :: Python :: 3.10',
+        'Programming Language :: Python :: 3.11',
         'Intended Audience :: Science/Research',
         'License :: OSI Approved :: GNU Affero General Public License v3',
     ],
