@@ -1,9 +1,6 @@
 #!/usr/bin/env python3
-
 import zenodo_get as zget
-
 import requests
-import json
 import hashlib
 import sys
 import os
@@ -213,6 +210,16 @@ def zenodo_get(argv=None):
         default=False,
     )
 
+    parser.add_option(
+        '-a',
+        '--access-token',
+        action='store',
+        type=str,
+        dest='access_token',
+        default=None,
+        help='Optional access token for the requests query.',
+    )
+
     (options, args) = parser.parse_args(argv)
 
     if options.cite:
@@ -277,8 +284,12 @@ def zenodo_get(argv=None):
         else:
             url = 'https://sandbox.zenodo.org/api/records/'
 
+        params = {}
+        if options.access_token:
+            params['access_token'] = options.access_token
+
         try:
-            r = requests.get(url + recordID, timeout=options.timeout)
+            r = requests.get(url + recordID, params=params, timeout=options.timeout)
         except requests.exceptions.ConnectTimeout:
             eprint('Connection timeout during metadata reading.')
             if exceptions:
@@ -293,7 +304,7 @@ def zenodo_get(argv=None):
                 sys.exit(1)
 
         if r.ok:
-            js = json.loads(r.text)
+            js = r.json()
             files = js['files']
             total_size = sum(f['size'] for f in files)
 
@@ -346,7 +357,7 @@ def zenodo_get(argv=None):
                     for _ in range(options.retry + 1):
                         try:
                             link = url = unquote(link)
-                            filename = wget.download(link)
+                            filename = wget.download(f"{link}?access_token={options.access_token}")
                         except Exception:
                             eprint(f'  Download error. Original link: {link}')
                             time.sleep(options.pause)
