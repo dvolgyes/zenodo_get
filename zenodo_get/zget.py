@@ -311,7 +311,7 @@ def zenodo_get(argv=None):
             if options.md5 is not None:
                 with open('md5sums.txt', 'wt') as md5file:
                     for f in files:
-                        fname = f['key']
+                        fname = f['filename']
                         checksum = f['checksum'].split(':')[-1]
                         md5file.write(f'{checksum}  {fname}\n')
 
@@ -323,7 +323,7 @@ def zenodo_get(argv=None):
                 else:
                     with open(options.wget, 'wt') as wgetfile:
                         for f in files:
-                            fname = f['key']
+                            fname = f['filename']
                             link = 'https://zenodo.org/record/{}/files/{}'.format(
                                 recordID, fname
                             )
