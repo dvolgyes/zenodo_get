@@ -306,7 +306,7 @@ def zenodo_get(argv=None):
         if r.ok:
             js = r.json()
             files = js['files']
-            total_size = sum(f['size'] for f in files)
+            total_size = sum(f['filesize'] for f in files)
 
             if options.md5 is not None:
                 with open('md5sums.txt', 'wt') as md5file:
@@ -342,7 +342,7 @@ def zenodo_get(argv=None):
                         eprint('Already successfully downloaded files are kept.')
                         break
                     link = f['links']['self']
-                    size = f['size'] / 2 ** 20
+                    size = f['filesize'] / 2 ** 20
                     eprint()
                     eprint(f'Link: {link}   size: {size:.1f} MB')
                     fname = f['key']
