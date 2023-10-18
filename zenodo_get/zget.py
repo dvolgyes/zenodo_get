@@ -345,7 +345,7 @@ def zenodo_get(argv=None):
                     size = f['filesize'] / 2 ** 20
                     eprint()
                     eprint(f'Link: {link}   size: {size:.1f} MB')
-                    fname = f['key']
+                    fname = f['filename']
                     checksum = f['checksum']
 
                     remote_hash, local_hash = check_hash(fname, checksum)
