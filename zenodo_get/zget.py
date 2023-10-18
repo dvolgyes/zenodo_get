@@ -56,7 +56,8 @@ def handle_ctrl_c(*args, **kwargs):
 
 
 def check_hash(filename, checksum):
-    algorithm, value = checksum.split(':')
+    algorithm = 'md5'
+    value = checksum.strip()
     if not os.path.exists(filename):
         return value, 'invalid'
     h = hashlib.new(algorithm)
@@ -306,24 +307,27 @@ def zenodo_get(argv=None):
         if r.ok:
             js = r.json()
             files = js['files']
-            total_size = sum(f['size'] for f in files)
+            total_size = sum(f['filesize'] for f in files)
 
             if options.md5 is not None:
                 with open('md5sums.txt', 'wt') as md5file:
                     for f in files:
-                        fname = f['key']
+                        fname = f['filename']
                         checksum = f['checksum'].split(':')[-1]
                         md5file.write(f'{checksum}  {fname}\n')
 
             if options.wget is not None:
                 if options.wget == '-':
                     for f in files:
-                        link = f['links']['self']
+                        fname = f['filename']
+                        link = 'https://zenodo.org/record/{}/files/{}'.format(
+                            recordID, fname
+                        )
                         print(link)
                 else:
                     with open(options.wget, 'wt') as wgetfile:
                         for f in files:
-                            fname = f['key']
+                            fname = f['filename']
                             link = 'https://zenodo.org/record/{}/files/{}'.format(
                                 recordID, fname
                             )
@@ -341,11 +345,17 @@ def zenodo_get(argv=None):
                         eprint('Download aborted with CTRL+C.')
                         eprint('Already successfully downloaded files are kept.')
                         break
-                    link = f['links']['self']
-                    size = f['size'] / 2 ** 20
+
+                    fname = f['filename']
+                    link = 'https://zenodo.org/record/{}/files/{}'.format(
+                        recordID, fname
+                    )
+
+
+                    size = f['filesize'] / 2 ** 20
                     eprint()
                     eprint(f'Link: {link}   size: {size:.1f} MB')
-                    fname = f['key']
+                    fname = f['filename']
                     checksum = f['checksum']
 
                     remote_hash, local_hash = check_hash(fname, checksum)
