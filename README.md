@@ -1,8 +1,5 @@
 zenodo_get: a downloader for Zenodo records
 ===========================================
-Travis:[![Build Status](https://travis-ci.org/dvolgyes/zenodo_get.svg?branch=master)](https://travis-ci.org/dvolgyes/zenodo_get)
-CircleCI:[![Build status](https://circleci.com/gh/dvolgyes/zenodo_get.svg?style=svg)](https://circleci.com/gh/dvolgyes/zenodo_get)
-SemaphoreCI:[![Build Status](https://semaphoreci.com/api/v1/dvolgyes/zenodo_get/branches/master/badge.svg)](https://semaphoreci.com/dvolgyes/zenodo_get)
 
 AppVeyor:[![Build status](https://ci.appveyor.com/api/projects/status/f6hw96rhdl104ch9?svg=true)](https://ci.appveyor.com/project/dvolgyes/zenodo-get)
 GitlabCI:[![pipeline status](https://gitlab.com/dvolgyes/zenodo_get/badges/master/pipeline.svg)](https://gitlab.com/dvolgyes/zenodo_get/commits/master)
@@ -13,7 +10,7 @@ Codecov:[![codecov](https://codecov.io/gh/dvolgyes/zenodo_get/branch/master/grap
 Snyk:[![Known Vulnerabilities](https://snyk.io/test/github/dvolgyes/zenodo_get/badge.svg)](https://snyk.io/test/github/dvolgyes/zenodo_get)
 
 
-This is a Python3 tool which can mass-download files from Zenodo records.
+This is a Python3 tool that can mass-download files from Zenodo records.
 
 [![pyversion](https://img.shields.io/pypi/pyversions/zenodo_get.svg)](https://pypi.org/project/zenodo-get/)
 [![PyPI - License](https://img.shields.io/pypi/l/zenodo_get.svg)](https://gitlab.com/dvolgyes/zenodo_get/raw/master/LICENSE.txt)
@@ -22,8 +19,7 @@ This is a Python3 tool which can mass-download files from Zenodo records.
 Source code
 -----------
 
-The code is hosted at Github and GitLab too, with the exact content.
-(except some temporary differences until synchronization)
+The code is hosted at Github, former Gitlab hosting is discontinued.
 
 Install
 -------
