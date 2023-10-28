@@ -1,16 +1,15 @@
 repos:
 -   repo: https://github.com/bemeurer/beautysh
-    rev: '3.8'
+    rev: 'v6.2.1'
     hooks:
     - id: beautysh
 -   repo: https://github.com/jumanjihouse/pre-commit-hooks
-    rev: '1.7.1'
+    rev: '3.0.0'
     hooks:
     - id: shellcheck
 -   repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v1.3.0
+    rev: v4.5.0
     hooks:
-    - id: autopep8-wrapper
     - id: check-added-large-files
     - id: check-case-conflict
     - id: check-executables-have-shebangs
@@ -20,17 +19,20 @@ repos:
     - id: check-symlinks
     - id: check-vcs-permalinks
     - id: trailing-whitespace
-    - id: flake8
     - id: detect-private-key
     - id: end-of-file-fixer
     - id: mixed-line-ending
-    - id: autopep8-wrapper
-#-   repo: https://github.com/pre-commit/mirrors-yapf
-#    rev: 'v0.22.0'  # Use the sha / tag you want to point at
-#    hooks:
-#    -   id: yapf
-repos:
--   repo: https://github.com/chriselion/pymarkdown-link-check
-    rev: 73773dc402a94ac36addad0492a78f1b19d4a3fe
+-   repo: https://github.com/pycqa/flake8
+    rev: '6.1.0'  # pick a git hash / tag to point to
     hooks:
-    - id: pymarkdown-link-check
+    - id: flake8
+      args: ["--ignore=E501,W503,E722"]
+-   repo: https://github.com/psf/black-pre-commit-mirror
+    rev: 23.10.1
+    hooks:
+    - id: black
+      language_version: python3.11
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+    - id: check-added-large-files
