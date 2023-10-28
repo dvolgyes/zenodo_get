@@ -2,7 +2,6 @@ zenodo_get: a downloader for Zenodo records
 ===========================================
 
 AppVeyor:[![Build status](https://ci.appveyor.com/api/projects/status/f6hw96rhdl104ch9?svg=true)](https://ci.appveyor.com/project/dvolgyes/zenodo-get)
-GitlabCI:[![pipeline status](https://gitlab.com/dvolgyes/zenodo_get/badges/master/pipeline.svg)](https://gitlab.com/dvolgyes/zenodo_get/commits/master)
 
 
 Coveralls:[![Coverage Status](https://img.shields.io/coveralls/github/dvolgyes/zenodo_get/master)](https://coveralls.io/github/dvolgyes/zenodo_get?branch=master)
@@ -13,7 +12,7 @@ Snyk:[![Known Vulnerabilities](https://snyk.io/test/github/dvolgyes/zenodo_get/b
 This is a Python3 tool that can mass-download files from Zenodo records.
 
 [![pyversion](https://img.shields.io/pypi/pyversions/zenodo_get.svg)](https://pypi.org/project/zenodo-get/)
-[![PyPI - License](https://img.shields.io/pypi/l/zenodo_get.svg)](https://gitlab.com/dvolgyes/zenodo_get/raw/master/LICENSE.txt)
+[![PyPI - License](https://img.shields.io/pypi/l/zenodo_get.svg)](https://github.com/dvolgyes/zenodo_get/raw/master/LICENSE.txt)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.1261812.svg)](https://doi.org/10.5281/zenodo.1261812)
 
 Source code
@@ -29,9 +28,8 @@ From PyPI:
 pip3 install zenodo_get
 ```
 
-Or from Gitlab/Github:
+Or from Github:
 ```
-pip3 install git+https://gitlab.com/dvolgyes/zenodo_get
 pip3 install git+https://github.com/dvolgyes/zenodo_get
 ```
 
