@@ -307,19 +307,19 @@ def zenodo_get(argv=None):
         if r.ok:
             js = r.json()
             files = js['files']
-            total_size = sum(f['filesize'] for f in files)
+            total_size = sum((f.get('filesize') or f['size']) for f in files)
 
             if options.md5 is not None:
                 with open('md5sums.txt', 'wt') as md5file:
                     for f in files:
-                        fname = f['filename']
+                        fname = (f.get('filename') or f['key'])
                         checksum = f['checksum'].split(':')[-1]
                         md5file.write(f'{checksum}  {fname}\n')
 
             if options.wget is not None:
                 if options.wget == '-':
                     for f in files:
-                        fname = f['filename']
+                        fname = (f.get('filename') or f['key'])
                         link = 'https://zenodo.org/record/{}/files/{}'.format(
                             recordID, fname
                         )
@@ -327,7 +327,7 @@ def zenodo_get(argv=None):
                 else:
                     with open(options.wget, 'wt') as wgetfile:
                         for f in files:
-                            fname = f['filename']
+                            fname = (f.get('filename') or f['key'])
                             link = 'https://zenodo.org/record/{}/files/{}'.format(
                                 recordID, fname
                             )
@@ -346,17 +346,17 @@ def zenodo_get(argv=None):
                         eprint('Already successfully downloaded files are kept.')
                         break
 
-                    fname = f['filename']
+                    fname = (f.get('filename') or f['key'])
                     link = 'https://zenodo.org/record/{}/files/{}'.format(
                         recordID, fname
                     )
 
 
-                    size = f['filesize'] / 2 ** 20
+                    size = (f.get('filesize') or f['size']) / 2 ** 20
                     eprint()
                     eprint(f'Link: {link}   size: {size:.1f} MB')
-                    fname = f['filename']
-                    checksum = f['checksum']
+                    fname = (f.get('filename') or f['key'])
+                    checksum = f['checksum'].split(':')[-1]
 
                     remote_hash, local_hash = check_hash(fname, checksum)
 
