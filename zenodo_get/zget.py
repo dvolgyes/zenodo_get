@@ -320,7 +320,7 @@ def zenodo_get(argv=None):
                 if options.wget == "-":
                     for f in files:
                         fname = f.get("filename") or f["key"]
-                        link = "https://zenodo.org/record/{}/files/{}".format(
+                        link = "https://zenodo.org/records/{}/files/{}".format(
                             recordID, fname
                         )
                         print(link)
@@ -328,7 +328,7 @@ def zenodo_get(argv=None):
                     with open(options.wget, "wt") as wgetfile:
                         for f in files:
                             fname = f.get("filename") or f["key"]
-                            link = "https://zenodo.org/record/{}/files/{}".format(
+                            link = "https://zenodo.org/records/{}/files/{}".format(
                                 recordID, fname
                             )
                             wgetfile.write(link + "\n")
@@ -346,7 +346,7 @@ def zenodo_get(argv=None):
                         break
 
                     fname = f.get("filename") or f["key"]
-                    link = "https://zenodo.org/record/{}/files/{}".format(
+                    link = "https://zenodo.org/records/{}/files/{}".format(
                         recordID, fname
                     )
 
