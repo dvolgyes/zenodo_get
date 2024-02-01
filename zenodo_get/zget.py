@@ -1,17 +1,20 @@
 #!/usr/bin/env python3
-import zenodo_get as zget
-import requests
-import hashlib
-import sys
-import os
-from optparse import OptionParser
-import wget
-import time
-import signal
-from pathlib import Path
+
 from contextlib import contextmanager
+import hashlib
+from optparse import OptionParser
+import os
+from pathlib import Path
+import signal
+import sys
+import time
 from urllib.parse import unquote
 
+import humanize
+import requests
+import wget
+
+import zenodo_get as zget
 
 # see https://stackoverflow.com/questions/431684/how-do-i-change-the-working-directory-in-python/24176022#24176022
 @contextmanager
@@ -337,7 +340,7 @@ def zenodo_get(argv=None):
                 eprint("Keywords: " + (", ".join(js["metadata"].get("keywords", []))))
                 eprint("Publication date: " + js["metadata"]["publication_date"])
                 eprint("DOI: " + js["metadata"]["doi"])
-                eprint("Total size: {:.1f} MB".format(total_size / 2**20))
+                eprint(f"Total size: {humanize.naturalsize(total_size)}")
 
                 for f in files:
                     if abort_signal:
@@ -345,14 +348,11 @@ def zenodo_get(argv=None):
                         eprint("Already successfully downloaded files are kept.")
                         break
 
-                    fname = f.get("filename") or f["key"]
-                    link = "https://zenodo.org/record/{}/files/{}".format(
-                        recordID, fname
-                    )
-
-                    size = (f.get("filesize") or f["size"]) / 2**20
+                    link = f["links"]["self"]
+                    link = unquote(link)
+                    size = humanize.naturalsize(f.get("filesize") or f["size"])
                     eprint()
-                    eprint(f"Link: {link}   size: {size:.1f} MB")
+                    eprint(f"Link: {link}   size: {size}")
                     fname = f.get("filename") or f["key"]
                     checksum = f["checksum"].split(":")[-1]
 
@@ -364,7 +364,6 @@ def zenodo_get(argv=None):
 
                     for _ in range(options.retry + 1):
                         try:
-                            link = url = unquote(link)
                             filename = wget.download(
                                 f"{link}?access_token={options.access_token}"
                             )
