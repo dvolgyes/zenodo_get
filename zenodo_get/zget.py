@@ -383,16 +383,17 @@ def zenodo_get(argv=None):
                                 sys.exit(1)
                         eprint("  Download continues with the next file.")
                         continue
-
+                    if fname != filename:
+                        os.rename(filename, fname)
                     eprint()
-                    h1, h2 = check_hash(filename, checksum)
+                    h1, h2 = check_hash(fname, checksum)
                     if h1 == h2:
                         eprint(f"Checksum is correct. ({h1})")
                     else:
                         eprint(f"Checksum is INCORRECT!({h1} got:{h2})")
                         if not options.keep:
                             eprint("  File is deleted.")
-                            os.remove(filename)
+                            os.remove(fname)
                         else:
                             eprint("  File is NOT deleted!")
                         if not options.error:
