@@ -322,6 +322,9 @@ def zenodo_get(argv=None):
                 for f in js["files"]
                 if fnmatch(f.get("filename") or f["key"], options.glob)
             ]
+            if not files:
+                eprint("Files {} not found in metadata".format(options.glob))
+                    
             total_size = sum((f.get("filesize") or f["size"]) for f in files)
 
             if options.md5 is not None:
