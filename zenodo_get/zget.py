@@ -221,6 +221,16 @@ def zenodo_get(argv=None):
         help="Optional access token for the requests query.",
     )
 
+    parser.add_option(
+        "-g",
+        "--glob",
+        action="store",
+        type=str,
+        dest="glob",
+        default="*",
+        help="Optional glob expression for files.",
+    )
+
     (options, args) = parser.parse_args(argv)
 
     if options.cite:
@@ -306,7 +316,11 @@ def zenodo_get(argv=None):
 
         if r.ok:
             js = r.json()
-            files = js["files"]
+            files = [
+                f
+                for f in js["files"]
+                if Path(f.get("filename") or f["key"]).match(options.glob)
+            ]
             total_size = sum((f.get("filesize") or f["size"]) for f in files)
 
             if options.md5 is not None:
