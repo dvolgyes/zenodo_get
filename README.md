@@ -64,6 +64,8 @@ Special parameters:
 - ``-m`` : generate md5sums.txt for verification. Beware, if `md5sums.txt` is
   present in the dataset, it will overwrite this generated file. Verification example:
   `md5sum -c md5sums.txt`
+- ``-g GLOB`` : A [glob](https://docs.python.org/3/library/fnmatch.html) expression to
+   select a subset of record files.
 - ``-w FILE`` : instead of downloading the record files, it will
    generate a FILE which contains direct links to the Zenodo site. These links
    could be downloaded with any download manager, e.g. with wget:
@@ -77,7 +79,7 @@ Special parameters:
 - ``-n`` : do not continue. The default behaviour is to download only the files
    which are not yet download or where the checksum does not match with the file.
    This flag disables this feature, and it will force download existing files,
-   and assigining a new name to the files (e.g. file(1).ext )
+   and assigning a new name to the files (e.g. file(1).ext )
 
 
 Remark for batch processing: the program always exits with non-zero exit code, if any error has happened,
