@@ -1,15 +1,16 @@
 #!/usr/bin/env python3
-import zenodo_get as zget
-import requests
 import hashlib
-import sys
 import os
-from optparse import OptionParser
-import wget
-import time
+import requests
 import signal
-from pathlib import Path
+import sys
+import time
+import wget
+import zenodo_get as zget
 from contextlib import contextmanager
+from fnmatch import fnmatch
+from optparse import OptionParser
+from pathlib import Path
 from urllib.parse import unquote
 
 
@@ -221,6 +222,16 @@ def zenodo_get(argv=None):
         help="Optional access token for the requests query.",
     )
 
+    parser.add_option(
+        "-g",
+        "--glob",
+        action="store",
+        type=str,
+        dest="glob",
+        default="*",
+        help="Optional glob expression for files.",
+    )
+
     (options, args) = parser.parse_args(argv)
 
     if options.cite:
@@ -306,7 +317,14 @@ def zenodo_get(argv=None):
 
         if r.ok:
             js = r.json()
-            files = js["files"]
+            files = [
+                f
+                for f in js["files"]
+                if fnmatch(f.get("filename") or f["key"], options.glob)
+            ]
+            if not files:
+                eprint("Files {} not found in metadata".format(options.glob))
+                    
             total_size = sum((f.get("filesize") or f["size"]) for f in files)
 
             if options.md5 is not None:

@@ -16,7 +16,7 @@ matrix:
 
 platform:
     -x64
-    
+
 install:
     - "SET PATH=C:\\Python38-x64;%PATH%"
     - "python -m pip install -r requirements.txt"
