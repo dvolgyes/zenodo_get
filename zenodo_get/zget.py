@@ -324,7 +324,7 @@ def zenodo_get(argv=None):
             ]
             if not files:
                 eprint("Files {} not found in metadata".format(options.glob))
-                    
+
             total_size = sum((f.get("filesize") or f["size"]) for f in files)
 
             if options.md5 is not None:
@@ -338,7 +338,7 @@ def zenodo_get(argv=None):
                 if options.wget == "-":
                     for f in files:
                         fname = f.get("filename") or f["key"]
-                        link = "https://zenodo.org/record/{}/files/{}".format(
+                        link = "https://zenodo.org/records/{}/files/{}".format(
                             recordID, fname
                         )
                         print(link)
@@ -346,7 +346,7 @@ def zenodo_get(argv=None):
                     with open(options.wget, "wt") as wgetfile:
                         for f in files:
                             fname = f.get("filename") or f["key"]
-                            link = "https://zenodo.org/record/{}/files/{}".format(
+                            link = "https://zenodo.org/records/{}/files/{}".format(
                                 recordID, fname
                             )
                             wgetfile.write(link + "\n")
@@ -364,7 +364,7 @@ def zenodo_get(argv=None):
                         break
 
                     fname = f.get("filename") or f["key"]
-                    link = "https://zenodo.org/record/{}/files/{}".format(
+                    link = "https://zenodo.org/records/{}/files/{}".format(
                         recordID, fname
                     )
 
