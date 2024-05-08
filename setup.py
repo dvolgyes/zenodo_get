@@ -18,7 +18,7 @@ setuptools.setup(
     entry_points={"console_scripts": ["zenodo_get = zenodo_get.zget:zenodo_get"]},
     python_requires=">=3.8",
     setup_requires=[],
-    install_requires=["requests", "wget"],
+    install_requires=["requests", "wget", "humanize"],
     keywords="zenodo download",
     classifiers=[
         "Development Status :: 4 - Beta",

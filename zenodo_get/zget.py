@@ -1,17 +1,20 @@
 #!/usr/bin/env python3
+from contextlib import contextmanager
+from fnmatch import fnmatch
 import hashlib
+from importlib.metadata import version
+from optparse import OptionParser
 import os
-import requests
+from pathlib import Path
 import signal
 import sys
 import time
+from urllib.parse import unquote
+
+import humanize
+import requests
 import wget
 import zenodo_get as zget
-from contextlib import contextmanager
-from fnmatch import fnmatch
-from optparse import OptionParser
-from pathlib import Path
-from urllib.parse import unquote
 
 
 # see https://stackoverflow.com/questions/431684/how-do-i-change-the-working-directory-in-python/24176022#24176022
@@ -83,7 +86,7 @@ def zenodo_get(argv=None):
         exceptions = True
 
     parser = OptionParser(
-        usage="%prog [options] RECORD_OR_DOI", version=f"%prog {zget.__version__}"
+        usage="%prog [options] RECORD_OR_DOI", version=f"%prog {version('zenodo_get')}"
     )
 
     parser.add_option(
@@ -355,7 +358,7 @@ def zenodo_get(argv=None):
                 eprint("Keywords: " + (", ".join(js["metadata"].get("keywords", []))))
                 eprint("Publication date: " + js["metadata"]["publication_date"])
                 eprint("DOI: " + js["metadata"]["doi"])
-                eprint("Total size: {:.1f} MB".format(total_size / 2**20))
+                eprint(f"Total size: {humanize.naturalsize(total_size)}")
 
                 for f in files:
                     if abort_signal:
@@ -368,9 +371,9 @@ def zenodo_get(argv=None):
                         recordID, fname
                     )
 
-                    size = (f.get("filesize") or f["size"]) / 2**20
+                    size = humanize.naturalsize(f.get("filesize") or f["size"])
                     eprint()
-                    eprint(f"Link: {link}   size: {size:.1f} MB")
+                    eprint(f"Link: {link}   size: {size}")
                     fname = f.get("filename") or f["key"]
                     checksum = f["checksum"].split(":")[-1]
 
@@ -402,15 +405,17 @@ def zenodo_get(argv=None):
                         eprint("  Download continues with the next file.")
                         continue
 
+                    if fname != filename:
+                        os.rename(filename, fname)
                     eprint()
-                    h1, h2 = check_hash(filename, checksum)
+                    h1, h2 = check_hash(fname, checksum)
                     if h1 == h2:
                         eprint(f"Checksum is correct. ({h1})")
                     else:
                         eprint(f"Checksum is INCORRECT!({h1} got:{h2})")
                         if not options.keep:
                             eprint("  File is deleted.")
-                            os.remove(filename)
+                            os.remove(fname)
                         else:
                             eprint("  File is NOT deleted!")
                         if not options.error:
