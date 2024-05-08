@@ -26,5 +26,5 @@ repos:
   - id: flake8
     args: ["--ignore=E203,E501,W503,E722"]
 - repo: https://github.com/psf/black
-  rev: '24.3.0'
+  rev: '24.4.2'
   hooks: [{id: black}]
