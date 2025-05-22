@@ -406,6 +406,8 @@ def zenodo_get(argv=None):
                         continue
 
                     if fname != filename:
+                        path = os.path.dirname(os.path.abspath(fname))
+                        Path(path).mkdir(parents=True, exist_ok=True)                        
                         os.rename(filename, fname)
                     eprint()
                     h1, h2 = check_hash(fname, checksum)
