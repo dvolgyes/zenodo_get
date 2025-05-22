@@ -13,8 +13,16 @@ $CMD  0 x && false || true
 $CMD  https://invalid && false || true
 
 # tests expected to pass
-$CMD  1215979 -m -e -k
+rm -r md5sums.txt
 $CMD  -r 1215979 -w urls.txt -n
+
+# Ensure that md5sums.txt is not created when it is not wanted
+[ ! -f "md5sums.txt" ]
+
+# Ensure that md5sums.txt is created when it is wanted
+$CMD  1215979 -m -e -k
+[ -f "md5sums.txt" ]
+
 $CMD  -r 1215979 -w -
 $CMD  10.5281/zenodo.1215979 -R 3 -p 2 -n
 $CMD  -d 10.5281/zenodo.1215979

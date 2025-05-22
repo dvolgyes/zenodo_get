@@ -330,7 +330,7 @@ def zenodo_get(argv=None):
 
             total_size = sum((f.get("filesize") or f["size"]) for f in files)
 
-            if options.md5 is not None:
+            if options.md5:
                 with open("md5sums.txt", "wt") as md5file:
                     for f in files:
                         fname = f.get("filename") or f["key"]
