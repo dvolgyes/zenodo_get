@@ -217,7 +217,7 @@ def _handle_single_file_download(
         return False # Checksum failed, but error_continues is true
 
 
-@click.command(context_settings=dict(help_option_names=["-h", "--help"]))
+@click.command()
 @click.version_option(version=version('zenodo-get'), prog_name='zenodo_get')
 @click.argument("record_or_doi", required=False, default=None)
 @click.option("-c", "--cite", "cite_opt", is_flag=True, default=False, help="print citation information")
