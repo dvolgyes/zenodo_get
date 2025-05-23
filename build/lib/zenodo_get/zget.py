@@ -119,6 +119,9 @@ def _fetch_record_metadata(
 
 def _filter_files_from_metadata(metadata_json, glob_str, record_id):
     """Filters files from metadata based on glob patterns."""
+    if not glob_str:
+        glob_str = "*"  # Default to "*"
+    patterns = [p.strip() for p in glob_str.split(",")]
 
     files_in_metadata = metadata_json.get("files", [])
     if not files_in_metadata:
@@ -129,16 +132,14 @@ def _filter_files_from_metadata(metadata_json, glob_str, record_id):
     for f_meta in files_in_metadata:
         filename = f_meta.get("filename") or f_meta.get("key")
         if filename:
-            if not glob_str:
-                matched_files.append(f_meta)
-            elif any(fnmatch(filename, pattern) for pattern in glob_str):
+            if any(fnmatch(filename, pattern) for pattern in patterns):
                 matched_files.append(f_meta)
         else:
             eprint(
                 f"Skipping file metadata entry due to missing filename/key: {f_meta.get('id', 'Unknown ID')}"
             )
 
-    if not matched_files and glob_str:
+    if not matched_files and glob_str != "*":
         eprint(
             f"Files matching patterns '{glob_str}' not found in metadata for record {record_id}"
         )
@@ -257,7 +258,7 @@ def _handle_single_file_download(
         return False  # Checksum failed, but error_continues is true
 
 
-@click.command(context_settings=dict(help_option_names=["-h", "--help"]))
+@click.command()
 @click.version_option(version=version("zenodo-get"), prog_name="zenodo_get")
 @click.argument("record_or_doi", required=False, default=None)
 @click.option(
@@ -314,7 +315,7 @@ def _handle_single_file_download(
     "--retry",
     "retry_opt",
     type=int,
-    default=1,
+    default=0,
     help="Retry on error N more times.",
 )
 @click.option(
@@ -322,7 +323,7 @@ def _handle_single_file_download(
     "--pause",
     "pause_opt",
     type=float,
-    default=3,
+    default=0.5,
     help="Wait N second before retry attempt, e.g. 0.5",
 )
 @click.option(
@@ -330,16 +331,14 @@ def _handle_single_file_download(
     "--time-out",
     "timeout_val_opt",
     type=float,
-    default=25.0,
-    help="Set connection time-out. Default: 25 [sec].",
+    default=15.0,
+    help="Set connection time-out. Default: 15 [sec].",
 )
 @click.option(
     "-o",
     "--output-dir",
     "outdir_opt",
-    type=click.Path(
-        path_type=Path, file_okay=False, dir_okay=True, writable=True, resolve_path=True
-    ),
+    type=click.Path(file_okay=False, dir_okay=True, writable=True, resolve_path=True),
     default=".",
     help="Output directory, created if necessary. Default: current directory.",
 )
@@ -363,10 +362,9 @@ def _handle_single_file_download(
     "-g",
     "--glob",
     "glob_str_opt",
-    multiple=True,
     type=str,
-    default=[],
-    help="Glob expressions for files, it can be used multiple times. (e.g., -g '*.txt'  -g '*.pdf'). Default: all files.",
+    default="*",
+    help="Optional comma-separated glob expressions for files (e.g., '*.txt,*.pdf'). Default: '*' (all files).",
 )
 def cli(
     record_or_doi,
@@ -451,8 +449,6 @@ def _zenodo_download_logic(
     glob_str_opt,
     exceptions_on_failure,
 ):
-    outdir_opt.mkdir(parents=True, exist_ok=True)
-
     with cd(outdir_opt):
         recordID_to_fetch = actual_record
         if actual_doi is not None:

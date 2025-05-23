@@ -2,11 +2,10 @@ zenodo_get: a downloader for Zenodo records
 ===========================================
 
 AppVeyor:[![Build status](https://ci.appveyor.com/api/projects/status/f6hw96rhdl104ch9?svg=true)](https://ci.appveyor.com/project/dvolgyes/zenodo-get)
-
+CircleCI:[![Build status](https://circleci.com/gh/dvolgyes/zenodo_get.svg?style=svg)](https://app.circleci.com/pipelines/github/dvolgyes/zenodo_get?branch=master)
 
 Coveralls:[![Coverage Status](https://img.shields.io/coveralls/github/dvolgyes/zenodo_get/master)](https://coveralls.io/github/dvolgyes/zenodo_get?branch=master)
 Codecov:[![codecov](https://codecov.io/gh/dvolgyes/zenodo_get/branch/master/graph/badge.svg)](https://codecov.io/gh/dvolgyes/zenodo_get)
-Snyk:[![Known Vulnerabilities](https://snyk.io/test/github/dvolgyes/zenodo_get/badge.svg)](https://snyk.io/test/github/dvolgyes/zenodo_get)
 
 
 This is a Python3 tool that can mass-download files from Zenodo records.
@@ -18,31 +17,66 @@ This is a Python3 tool that can mass-download files from Zenodo records.
 Source code
 -----------
 
-The code is hosted at Github, former Gitlab hosting is discontinued.
+The code is hosted at Github.
 
-Install
--------
+Installation
+------------
 
-From PyPI:
-```
-pip3 install zenodo_get
-```
+It is recommended to use `uv` for managing Python environments and installing this package.
+`zenodo-get` requires **Python 3.10 or newer**.
 
-Or from Github:
-```
-pip3 install git+https://github.com/dvolgyes/zenodo_get
-```
+1.  Install `uv` (if you haven't already):
+    ```bash
+    # On macOS and Linux
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+    # On Windows
+    powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
+    ```
+2.  Create a virtual environment and install `zenodo-get`:
+    *   From PyPI:
+        ```bash
+        uv venv
+        uv pip install zenodo-get
+        source .venv/bin/activate # Or .venv\Scripts\activate on Windows
+        ```
+    *   Or from a local source checkout:
+        ```bash
+        uv venv
+        uv pip install .
+        source .venv/bin/activate # Or .venv\Scripts\activate on Windows
+        ```
 
+Traditional pip installation is also supported:
+```bash
+pip install zenodo-get # Ensure pip is for Python 3.10+
+```
 
 Afterwards, you can query the command line options:
-```
+```bash
 zenodo_get -h
 ```
 
 but the default settings should work for most use cases:
-```
+```bash
 zenodo_get RECORD_ID_OR_DOI
 ```
+
+### Running with `uv run`
+
+Once your project is set up with `uv` (either by installing dependencies via `uv pip install .` or by just having the `pyproject.toml` present), you can use `uv run` to execute the `zenodo_get` command directly without needing to activate the virtual environment in your current shell:
+
+```bash
+# Example: Show help message
+uv run zenodo_get -- --help
+
+# Example: Download a record (replace YOUR_RECORD_ID)
+uv run zenodo_get -- YOUR_RECORD_ID -o output_directory
+
+# Example: Using a script defined in pyproject.toml (zenodo_get is defined there)
+# uv run zenodo_get -- YOUR_RECORD_ID
+```
+Note the `--` which separates arguments for `uv run` itself from the arguments for the script (`zenodo_get`).
+This is often the most convenient way to run the tool if you are frequently working with `uv`-managed projects.
 
 
 Documentation
@@ -56,18 +90,22 @@ zenodo_get -h
 but if you need more, open a github ticket and explain what is missing.
 
 Basic usage:
-```
+```bash
 zenodo_get RECORD_ID_OR_DOI
 ```
 
-Special parameters:
-- ``-m`` : generate md5sums.txt for verification. Beware, if `md5sums.txt` is
+### Filtering by File Type
+You can use the `-g` or `--glob` option to specify file patterns. To download multiple specific file types, provide a comma-separated list of glob patterns:
+```bash
+zenodo_get RECORD_ID_OR_DOI -g "*.txt,*.pdf,images/*.png"
+```
+
+Other Special parameters:
+- `-m` : generate `md5sums.txt` for verification. Beware, if `md5sums.txt` is
   present in the dataset, it will overwrite this generated file. Verification example:
   `md5sum -c md5sums.txt`
-- ``-g GLOB`` : A [glob](https://docs.python.org/3/library/fnmatch.html) expression to
-   select a subset of record files.
-- ``-w FILE`` : instead of downloading the record files, it will
-   generate a FILE which contains direct links to the Zenodo site. These links
+- `-w FILE` : instead of downloading the record files, it will
+   generate a FILE (or print to stdout if `FILE` is `-`) which contains direct links to the Zenodo site. These links
    could be downloaded with any download manager, e.g. with wget:
    `wget -i urls.txt`
 - ``-e`` : continue on error. It will skip the files with errors, but it will

@@ -2,13 +2,13 @@ image:
   - Visual Studio 2019
 environment:
     global:
-        PYTHON: "C:\\Python38-x64\\python3.exe"
+        PYTHON: "C:\\Python313-x64\\python3.exe"
         MINICONDA_VERSION: "latest"
         PYTHON_ARCH: "64" # needs to be set for CMD_IN_ENV to succeed. If a mix
                           # of 32 bit and 64 bit builds are needed, move this
                           # to the matrix section.
     matrix:
-        - PYTHON_VERSION: "3.8"
+        - PYTHON_VERSION: "3.13"
           NUMPY_VERSION: "stable"
 
 matrix:
@@ -18,10 +18,10 @@ platform:
     -x64
 
 install:
-    - "SET PATH=C:\\Python38-x64;%PATH%"
-    - "python -m pip install -r requirements.txt"
-    - "python -m pip install git+https://github.com/dvolgyes/zenodo_get"
+    - "SET PATH=C:\\Python313-x64;%PATH%"
     - choco install --accept-license wget
+    - "python -m pip install ."
+    - "python -m pip install git+https://github.com/dvolgyes/zenodo_get"
 
 build: off
 
