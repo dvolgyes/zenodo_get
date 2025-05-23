@@ -25,6 +25,11 @@ Installation
 It is recommended to use `uv` for managing Python environments and installing this package.
 `zenodo-get` requires **Python 3.10 or newer**.
 
+0. The most simple way is to use it as a tool, no installation is needed:
+    ```bash
+    uv tool run zenodo_get RECORD_ID_OR_DOI
+    ```
+
 1.  Install `uv` (if you haven't already):
     ```bash
     # On macOS and Linux
@@ -63,20 +68,22 @@ zenodo_get RECORD_ID_OR_DOI
 
 ### Running with `uv run`
 
+As stated above, the most simple way is to use `uv tool run` or `uvx`.
+If you don't use these, but you use `uv`:
 Once your project is set up with `uv` (either by installing dependencies via `uv pip install .` or by just having the `pyproject.toml` present), you can use `uv run` to execute the `zenodo_get` command directly without needing to activate the virtual environment in your current shell:
 
 ```bash
 # Example: Show help message
-uv run zenodo_get -- --help
+uv run zenodo_get --help
 
 # Example: Download a record (replace YOUR_RECORD_ID)
-uv run zenodo_get -- YOUR_RECORD_ID -o output_directory
+uv run zenodo_get YOUR_RECORD_ID -o output_directory
 
 # Example: Using a script defined in pyproject.toml (zenodo_get is defined there)
-# uv run zenodo_get -- YOUR_RECORD_ID
+# uv run zenodo_get YOUR_RECORD_ID
 ```
-Note the `--` which separates arguments for `uv run` itself from the arguments for the script (`zenodo_get`).
-This is often the most convenient way to run the tool if you are frequently working with `uv`-managed projects.
+
+Pip and pipx also work.
 
 
 Documentation
