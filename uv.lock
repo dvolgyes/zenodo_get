@@ -301,6 +301,13 @@ dev = [
     { name = "coveralls" },
 ]
 
+[package.dev-dependencies]
+dev = [
+    { name = "codecov" },
+    { name = "coverage" },
+    { name = "coveralls" },
+]
+
 [package.metadata]
 requires-dist = [
     { name = "click" },
@@ -313,3 +320,10 @@ requires-dist = [
     { name = "wget" },
 ]
 provides-extras = ["dev"]
+
+[package.metadata.requires-dev]
+dev = [
+    { name = "codecov", specifier = ">=2.1.13" },
+    { name = "coverage", specifier = ">=7.8.2" },
+    { name = "coveralls", specifier = ">=4.0.1" },
+]
