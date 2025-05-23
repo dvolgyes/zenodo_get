@@ -78,11 +78,11 @@ def check_hash(filename, checksum):
 def _fetch_record_metadata(record_id, sandbox, access_token, timeout_val, exceptions_on_failure):
     """Fetches and returns the JSON metadata for a Zenodo record."""
     api_url_base = "https://sandbox.zenodo.org/api/records/" if sandbox else "https://zenodo.org/api/records/"
-    
+
     params = {}
     if access_token:
         params["access_token"] = access_token
-    
+
     try:
         r = requests.get(api_url_base + record_id, params=params, timeout=timeout_val)
         r.raise_for_status()  # Raises HTTPError for bad responses (4XX or 5XX)
@@ -107,8 +107,6 @@ def _fetch_record_metadata(record_id, sandbox, access_token, timeout_val, except
 
 def _filter_files_from_metadata(metadata_json, glob_str, record_id):
     """Filters files from metadata based on glob patterns."""
-    if not glob_str: glob_str = "*" # Default to "*"
-    patterns = [p.strip() for p in glob_str.split(',')]
 
     files_in_metadata = metadata_json.get("files", [])
     if not files_in_metadata:
@@ -119,20 +117,22 @@ def _filter_files_from_metadata(metadata_json, glob_str, record_id):
     for f_meta in files_in_metadata:
         filename = f_meta.get("filename") or f_meta.get("key")
         if filename:
-            if any(fnmatch(filename, pattern) for pattern in patterns):
+            if not glob_str:
+                matched_files.append(f_meta)
+            elif any(fnmatch(filename, pattern) for pattern in glob_str):
                 matched_files.append(f_meta)
         else:
             eprint(f"Skipping file metadata entry due to missing filename/key: {f_meta.get('id', 'Unknown ID')}")
-    
-    if not matched_files and glob_str != "*":
+
+    if not matched_files and glob_str:
         eprint(f"Files matching patterns '{glob_str}' not found in metadata for record {record_id}")
-    
+
     return matched_files
 
 
 def _handle_single_file_download(
-    file_info, record_id, download_url_base, access_token, 
-    cont_download, retry_limit, pause_duration, 
+    file_info, record_id, download_url_base, access_token,
+    cont_download, retry_limit, pause_duration,
     timeout_val, # timeout_val is not directly used by wget.download, but good to have if we change download method
     keep_invalid, error_continues, exceptions_on_failure
 ):
@@ -164,15 +164,15 @@ def _handle_single_file_download(
         try:
             unquoted_link = unquote(link)
             download_target_url = f"{unquoted_link}?access_token={access_token}" if access_token else unquoted_link
-            
+
             Path(fname).parent.mkdir(parents=True, exist_ok=True)
             wget_filename = wget.download(download_target_url, out=fname)
-            
+
             if fname != wget_filename: # Should ideally not happen if out=fname works as expected
                  eprint(f"Warning: Downloaded filename '{wget_filename}' differs from expected '{fname}'. Renaming.")
                  os.rename(wget_filename, fname)
             download_successful_flag = True
-            break 
+            break
         except Exception as e_download:
             eprint(f"  Download error for {fname}: {e_download}")
             current_retry += 1
@@ -189,7 +189,7 @@ def _handle_single_file_download(
                 else:
                     eprint(f"  Skipping {fname} and continuing with the next file.")
                     return False # Indicate failure for this file, but allow continuation
-    
+
     if not download_successful_flag: # Should only be reached if error_continues was true and all retries failed
         return False
 
@@ -208,7 +208,7 @@ def _handle_single_file_download(
                 eprint(f"  Error deleting file {fname}: {e_remove}")
         else:
             eprint(f"  File {fname} is NOT deleted!")
-        
+
         if not error_continues:
             msg = f"Aborting due to checksum error for {fname}."
             eprint(msg)
@@ -228,17 +228,17 @@ def _handle_single_file_download(
 @click.option("-e", "--continue-on-error", "continue_on_error_opt", is_flag=True, default=False, help="Continue with next file if error happens.")
 @click.option("-k", "--keep", "keep_opt", is_flag=True, default=False, help="Keep files with invalid checksum. (Default: delete them.)")
 @click.option("-n", "--do-not-continue", "start_fresh_opt", is_flag=True, default=False, help="Do not continue previous download attempt, start fresh.")
-@click.option("-R", "--retry", "retry_opt", type=int, default=0, help="Retry on error N more times.")
-@click.option("-p", "--pause", "pause_opt", type=float, default=0.5, help="Wait N second before retry attempt, e.g. 0.5")
-@click.option("-t", "--time-out", "timeout_val_opt", type=float, default=15.0, help="Set connection time-out. Default: 15 [sec].")
-@click.option("-o", "--output-dir", "outdir_opt", type=click.Path(file_okay=False, dir_okay=True, writable=True, resolve_path=True), default=".", help="Output directory, created if necessary. Default: current directory.")
+@click.option("-R", "--retry", "retry_opt", type=int, default=1, help="Retry on error N more times.")
+@click.option("-p", "--pause", "pause_opt", type=float, default=3, help="Wait N second before retry attempt, e.g. 0.5")
+@click.option("-t", "--time-out", "timeout_val_opt", type=float, default=25.0, help="Set connection time-out. Default: 25 [sec].")
+@click.option("-o", "--output-dir", "outdir_opt", type=click.Path(path_type=Path,file_okay=False, dir_okay=True, writable=True, resolve_path=True), default=".", help="Output directory, created if necessary. Default: current directory.")
 @click.option("-s", "--sandbox", "sandbox_opt", is_flag=True, default=False, help="Use Zenodo Sandbox URL.")
 @click.option("-a", "--access-token", "access_token_opt", type=str, default=None, help="Optional access token for the requests query.")
-@click.option("-g", "--glob", "glob_str_opt", type=str, default="*", help="Optional comma-separated glob expressions for files (e.g., '*.txt,*.pdf'). Default: '*' (all files).")
+@click.option("-g", "--glob", "glob_str_opt", multiple=True, type=str, default=[], help="Glob expressions for files, it can be used multiple times. (e.g., -g '*.txt'  -g '*.pdf'). Default: all files.")
 def cli(
-    record_or_doi, cite_opt, record, doi, md5_opt, wget_file_opt, 
-    continue_on_error_opt, keep_opt, start_fresh_opt, retry_opt, 
-    pause_opt, timeout_val_opt, outdir_opt, sandbox_opt, 
+    record_or_doi, cite_opt, record, doi, md5_opt, wget_file_opt,
+    continue_on_error_opt, keep_opt, start_fresh_opt, retry_opt,
+    pause_opt, timeout_val_opt, outdir_opt, sandbox_opt,
     access_token_opt, glob_str_opt
 ):
     cont_opt = not start_fresh_opt
@@ -254,7 +254,7 @@ def cli(
     if record_or_doi:
         try: actual_record_id = str(int(record_or_doi))
         except ValueError: actual_doi_str = record_or_doi
-    
+
     if actual_doi_str is None and actual_record_id is None:
         ctx = click.get_current_context(); click.echo(ctx.get_help()); ctx.exit(1)
 
@@ -271,11 +271,13 @@ def cli(
 
 
 def _zenodo_download_logic(
-    actual_record, actual_doi, md5_opt, wget_file_opt, 
-    continue_on_error_opt, keep_opt, cont_opt, retry_opt, 
-    pause_opt, timeout_val_opt, outdir_opt, sandbox_opt, 
+    actual_record, actual_doi, md5_opt, wget_file_opt,
+    continue_on_error_opt, keep_opt, cont_opt, retry_opt,
+    pause_opt, timeout_val_opt, outdir_opt, sandbox_opt,
     access_token_opt, glob_str_opt, exceptions_on_failure
 ):
+    outdir_opt.mkdir(parents=True, exist_ok=True)
+
     with cd(outdir_opt):
         recordID_to_fetch = actual_record
         if actual_doi is not None:
@@ -294,17 +296,17 @@ def _zenodo_download_logic(
                 eprint(msg)
                 if exceptions_on_failure: raise ValueError(msg)
                 else: sys.exit(1)
-        
+
         recordID_to_fetch = recordID_to_fetch.strip()
 
         metadata = _fetch_record_metadata(
-            recordID_to_fetch, sandbox_opt, access_token_opt, 
+            recordID_to_fetch, sandbox_opt, access_token_opt,
             timeout_val_opt, exceptions_on_failure
         )
         if not metadata: return # Error handled by _fetch_record_metadata
 
         files_to_download = _filter_files_from_metadata(metadata, glob_str_opt, recordID_to_fetch)
-        
+
         download_url_base = "https://sandbox.zenodo.org/records/" if sandbox_opt else "https://zenodo.org/records/"
 
         if md5_opt:
@@ -341,7 +343,7 @@ def _zenodo_download_logic(
             if abort_signal:
                 eprint("Download aborted with CTRL+C. Partially downloaded files may exist.")
                 break
-            
+
             eprint(f"\nDownloading ({i+1}/{len(files_to_download)}):")
             _handle_single_file_download(
                 file_info=file_info_item,
@@ -362,10 +364,10 @@ def _zenodo_download_logic(
 
 
 def download( # Public API function
-    record_or_doi=None, record=None, doi=None, output_dir=".", md5=False, 
-    wget_file=None, continue_on_error=False, keep_invalid=False, 
-    start_fresh=False, retry_attempts=0, retry_pause=0.5, timeout=15.0, 
-    sandbox_url=False, access_token=None, file_glob="*", 
+    record_or_doi=None, record=None, doi=None, output_dir=".", md5=False,
+    wget_file=None, continue_on_error=False, keep_invalid=False,
+    start_fresh=False, retry_attempts=0, retry_pause=0.5, timeout=15.0,
+    sandbox_url=False, access_token=None, file_glob="*",
     exceptions_on_failure=True
 ):
     actual_record_id = record
@@ -373,7 +375,7 @@ def download( # Public API function
     if record_or_doi:
         try: actual_record_id = str(int(record_or_doi))
         except ValueError: actual_doi_str = record_or_doi
-    
+
     if actual_doi_str is None and actual_record_id is None:
         if exceptions_on_failure: raise ValueError("Either record_or_doi, record, or doi must be provided.")
         else: eprint("Error: No record ID or DOI specified."); sys.exit(1)
@@ -381,7 +383,7 @@ def download( # Public API function
     outdir_path = Path(output_dir) if isinstance(output_dir, str) else output_dir
 
     _zenodo_download_logic(
-        actual_record_id, actual_doi_str, md5, wget_file, continue_on_error, 
-        keep_invalid, not start_fresh, retry_attempts, retry_pause, timeout, 
+        actual_record_id, actual_doi_str, md5, wget_file, continue_on_error,
+        keep_invalid, not start_fresh, retry_attempts, retry_pause, timeout,
         outdir_path, sandbox_url, access_token, file_glob, exceptions_on_failure
     )
