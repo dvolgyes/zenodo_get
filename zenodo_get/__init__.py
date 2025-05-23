@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
-__version__ = "1.6.1"
+from importlib.metadata import version
+
 __title__ = "zenodo_get"
 __summary__ = "Zenodo_get - a downloader for Zenodo records"
 __uri__ = "https://github.com/dvolgyes/zenodo_get"
@@ -32,15 +33,19 @@ __bibtex__ = (
 __reference__ = (
     """David Völgyes. (2020, February 20). \
 Zenodo_get: a downloader for Zenodo records (Version """
-    + __version__
+    + version('zenodo-get')
     + """).
 Zenodo. https://doi.org/"""
     + __doi__
 )
 
 try:  # wget and other libs might not be present at installation
-    from .zget import zenodo_get
+    from .zget import download # Updated to import the new public API function
 
-    __all__ = ["zenodo_get"]
-except:
+    __all__ = ["download"] # Updated to export the new public API function
+except ImportError: # More specific exception handling
+    # This can happen during initial package build where zget might not be compiled/available yet
+    # Or if a user tries to import without all dependencies installed for some reason.
+    # Allow the import to proceed without 'download' if it's not found,
+    # as other metadata in __init__ might still be useful.
     pass

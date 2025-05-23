@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "zenodo-get"
+version = "1.6.1"
+authors = [
+  { name = "David Völgyes", email = "david.volgyes@ieee.org" },
+]
+description = "Zenodo_get - a downloader for Zenodo records"
+readme = "README.md"
+requires-python = ">=3.10"
+license = {file = "LICENSE.txt"}
+keywords = ["zenodo", "download"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: GNU Affero General Public License v3",
+]
+dependencies = [
+  "requests",
+  "wget",
+  "humanize",
+  "click",
+]
+
+[project.urls]
+Homepage = "https://github.com/dvolgyes/zenodo_get"
+DOI = "10.5281/zenodo.1261812"
+
+[project.scripts]
+zenodo_get = "zenodo_get.zget:cli"
+
+[project.optional-dependencies]
+dev = [
+    "coverage",
+    "codecov",
+    "coveralls",
+]

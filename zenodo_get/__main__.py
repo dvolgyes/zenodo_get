@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import zenodo_get
+from zenodo_get.zget import cli
 
 if __name__ == "__main__":
-    zenodo_get.zenodo_get()
+    cli()
