@@ -39,19 +39,20 @@ $CMD 10.5281/zenodo.1215979 -R 3 -p 2 -n
 $CMD -d 10.5281/zenodo.1215979
 
 
-# New Test Case 1: Download only .ipynb files
-echo "Running Test Case 1: Download only .ipynb files"
-$CMD 1215979 -g "*.ipynb" -o test_ipynb_output -n
-[ -f "test_ipynb_output/example.ipynb" ]
+# New Test Case 1: Download only .py files
+echo "Running Test Case 1: Download only .py files"
+$CMD 1215979 -g "*.py" -o test_json_py_output -n
+[ -f "test_json_py_output/fetch_data.py" ]
+[ ! -f "test_json_py_output/opencare-tags-anonymized.json" ]
 [ ! -f "test_ipynb_output/example.bib" ]
 rm -rf test_ipynb_output
 echo "Test Case 2 PASSED"
 
-# New Test Case 2: Download .bib and .xml files
-echo "Running Test Case 2: Download .bib and .xml files"
-$CMD 1215979 -g "*.bib" -g "*.xml" -o test_bib_xml_output -n
-[ -f "test_bib_xml_output/example.bib" ]
-[ -f "test_bib_xml_output/example.xml" ]
+# New Test Case 2: Download .json and .py files
+echo "Running Test Case 2: Download .json and .py files"
+$CMD 1215979 -g "*.json" -g "*.py" -o test_json_py_output -n
+[ -f "test_json_py_output/fetch_data.py" ]
+[ -f "test_json_py_output/opencare-tags-anonymized.json" ]
 [ ! -f "test_bib_xml_output/example.ipynb" ]
 rm -rf test_bib_xml_output
 echo "Test Case 1 PASSED"
