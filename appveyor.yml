@@ -19,9 +19,9 @@ platform:
 
 install:
     - "SET PATH=C:\\Python313-x64;%PATH%"
-    - "python -m pip install -r requirements.txt"
-    - "python -m pip install git+https://github.com/dvolgyes/zenodo_get"
     - choco install --accept-license wget
+    - "python -m pip install ."
+    - "python -m pip install git+https://github.com/dvolgyes/zenodo_get"
 
 build: off
 
