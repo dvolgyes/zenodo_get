@@ -34,8 +34,8 @@ def test_api_download_specific_file():
             start_fresh=True,  # Corresponds to -n
             exceptions_on_failure=True,  # Ensure API raises exceptions
         )
-        assert os.path.exists(os.path.join(output_dir, "fetch.py")), (
-            "fetch.py was not downloaded"
+        assert os.path.exists(os.path.join(output_dir, "fetch_data.py")), (
+            "fetch_data.py was not downloaded"
         )
         print(
             f"API Test: Download specific file (*.py) PASSED. Files in {output_dir}: {os.listdir(output_dir)}"
