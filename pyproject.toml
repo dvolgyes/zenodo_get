@@ -36,7 +36,6 @@ dependencies = [
 
 [project.urls]
 Homepage = "https://github.com/dvolgyes/zenodo_get"
-DOI = "10.5281/zenodo.1261812"
 
 [project.scripts]
 zenodo_get = "zenodo_get.zget:cli"
