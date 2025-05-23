@@ -19,7 +19,6 @@ except ImportError as e:
 
 
 class WebFile:
-
     def __init__(self, url, size, chunksize=64, largefile=1024):
         self.url = url
         self.r = None
@@ -89,7 +88,6 @@ class WebFile:
 
 
 class ZenodoFS(LoggingMixIn, Operations):
-
     def __init__(self, recordIDs, sandbox_recordIDs, chunksize=64, largefile=1024):
         self.records = {
             "sandbox": [],
@@ -128,7 +126,7 @@ class ZenodoFS(LoggingMixIn, Operations):
             js = json.loads(r.text)["files"]
             for f in json.loads(r.text)["files"]:
                 path = "zenodo" if not sandbox else "sandbox"
-                self.attr_cache[f'/{path}/{recordID}/{f["key"]}'] = SBox(
+                self.attr_cache[f"/{path}/{recordID}/{f['key']}"] = SBox(
                     f, default_box=True
                 )
 
@@ -221,7 +219,6 @@ class ZenodoFS(LoggingMixIn, Operations):
 
 
 if __name__ == "__main__":
-
     import argparse
 
     parser = argparse.ArgumentParser()
