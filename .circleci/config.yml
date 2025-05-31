@@ -19,7 +19,7 @@ jobs:
             curl -LsSf https://astral.sh/uv/install.sh | sh
             # Ensure uv is in PATH for subsequent steps
             # CircleCI's BASH shells usually pick up $HOME/.cargo/bin, but being explicit is safer
-            echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> $BASH_ENV 
+            echo 'export PATH="$HOME/.cargo/bin:$PATH"' >> $BASH_ENV
             source $BASH_ENV
 
       # Download and cache dependencies using uv

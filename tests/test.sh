@@ -9,16 +9,32 @@ echo "Testing uv run zenodo_get --version"
 uv run zenodo_get --version > /dev/null
 
 echo "Testing uv run zenodo_get -h"
-uv run zenodo_get -h > /dev/null 
+uv run zenodo_get -h > /dev/null
 
 echo "Testing uv run zenodo_get --cite"
 uv run zenodo_get --cite > /dev/null
 
 # tests expected to fail (using the new CMD)
-$CMD invalid_doi && false || true
-$CMD -1 x && false || true
-$CMD 0 x && false || true
-$CMD https://invalid && false || true
+# These commands should fail - if they succeed, we fail the test
+if $CMD invalid_doi; then
+    echo "ERROR: 'invalid_doi' should have failed but succeeded"
+    false  # fail is invoked because this test is not supposed to finish successfully
+fi
+
+if $CMD -1 x; then
+    echo "ERROR: '-1 x' should have failed but succeeded"
+    false  # fail is invoked because this test is not supposed to finish successfully
+fi
+
+if $CMD 0 x; then
+    echo "ERROR: '0 x' should have failed but succeeded"
+    false  # fail is invoked because this test is not supposed to finish successfully
+fi
+
+if $CMD https://invalid; then
+    echo "ERROR: 'https://invalid' should have failed but succeeded"
+    false  # fail is invoked because this test is not supposed to finish successfully
+fi
 
 # tests expected to pass
 # Clean up any potential leftovers from previous runs

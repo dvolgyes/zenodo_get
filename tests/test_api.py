@@ -1,6 +1,9 @@
+"""Test the Python API for zenodo_get download functionality."""
+
 import os
 import shutil
 import sys
+from pathlib import Path
 
 # Assuming zenodo_get is installed or PYTHONPATH is set correctly
 # to find the zenodo_get package.
@@ -18,13 +21,14 @@ except ImportError:
         from zenodo_get.zget import download
 
 
-def test_api_download_specific_file():
+def test_api_download_specific_file() -> None:
+    """Verify API can download files matching specific glob patterns."""
     print("Running API Test: Download specific file (*.py)")
     output_dir = "test_api_r_output"
 
     # Cleanup before test
     shutil.rmtree(output_dir, ignore_errors=True)
-    os.makedirs(output_dir, exist_ok=True)
+    Path(output_dir).mkdir(parents=True, exist_ok=True)
 
     try:
         download(
@@ -34,7 +38,7 @@ def test_api_download_specific_file():
             start_fresh=True,  # Corresponds to -n
             exceptions_on_failure=True,  # Ensure API raises exceptions
         )
-        assert os.path.exists(os.path.join(output_dir, "fetch_data.py")), (
+        assert Path(output_dir, "fetch_data.py").exists(), (
             "fetch_data.py was not downloaded"
         )
         print(
@@ -50,12 +54,16 @@ def test_api_download_specific_file():
     shutil.rmtree(output_dir, ignore_errors=True)
 
 
-def test_api_error_handling():
+def test_api_error_handling() -> None:
+    """Ensure API properly raises exceptions for invalid input."""
     print("Running API Test: Error handling for invalid DOI")
     raised_expected_exception = False
     try:
         download(record_or_doi="invalid_doi_for_api_test", exceptions_on_failure=True)
-    except (ValueError, ConnectionError) as ve:  # DOI resolution failure can raise ValueError or ConnectionError
+    except (
+        ValueError,
+        ConnectionError,
+    ) as ve:  # DOI resolution failure can raise ValueError or ConnectionError
         print(f"API Test: Error handling - Caught expected exception: {ve}")
         raised_expected_exception = True
     except Exception as e:  # Catch any other exception to report it
@@ -70,7 +78,8 @@ def test_api_error_handling():
     print("API Test: Error handling for invalid DOI PASSED.")
 
 
-def main():
+def main() -> None:
+    """Run all API tests and report results."""
     try:
         test_api_download_specific_file()
         test_api_error_handling()
