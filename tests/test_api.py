@@ -55,8 +55,8 @@ def test_api_error_handling():
     raised_expected_exception = False
     try:
         download(record_or_doi="invalid_doi_for_api_test", exceptions_on_failure=True)
-    except ValueError as ve:  # Assuming DOI resolution failure raises ValueError
-        print(f"API Test: Error handling - Caught expected ValueError: {ve}")
+    except (ValueError, ConnectionError) as ve:  # DOI resolution failure can raise ValueError or ConnectionError
+        print(f"API Test: Error handling - Caught expected exception: {ve}")
         raised_expected_exception = True
     except Exception as e:  # Catch any other exception to report it
         print(
@@ -65,7 +65,7 @@ def test_api_error_handling():
         pass  # Not the expected exception
 
     assert raised_expected_exception, (
-        "Expected ValueError was not raised for invalid DOI."
+        "Expected ValueError or ConnectionError was not raised for invalid DOI."
     )
     print("API Test: Error handling for invalid DOI PASSED.")
 

@@ -12,8 +12,9 @@ from urllib.parse import unquote
 
 import click
 import humanize
-import requests
+import httpx
 import wget
+from loguru import logger
 import zenodo_get as zget
 
 
@@ -28,34 +29,27 @@ def cd(newdir):
         os.chdir(prevdir)
 
 
-def eprint(*args, **kwargs):
-    print(*args, file=sys.stderr, **kwargs)
-
-
 def ctrl_c(func):
+    """Decorator to register signal handler - only used in CLI mode."""
     signal.signal(signal.SIGINT, func)
     return func
 
 
 abort_signal = False
 abort_counter = 0
-# Removed 'exceptions = False' as its usage will be handled by exceptions_on_failure
 
 
 @ctrl_c
 def handle_ctrl_c(*args, **kwargs):
+    """Handle Ctrl+C signal - only active in CLI mode."""
     global abort_signal
     global abort_counter
-    # global exceptions # No longer needed here
 
     abort_signal = True
     abort_counter += 1
 
     if abort_counter >= 2:
-        eprint()
-        eprint("Immediate abort. There might be unfinished files.")
-        # The 'exceptions' variable logic for immediate abort is tricky
-        # to maintain with the new structure. For now, direct exit.
+        logger.error("Immediate abort. There might be unfinished files.")
         sys.exit(1)
 
 
@@ -90,26 +84,27 @@ def _fetch_record_metadata(
         params["access_token"] = access_token
 
     try:
-        r = requests.get(api_url_base + record_id, params=params, timeout=timeout_val)
-        r.raise_for_status()  # Raises HTTPError for bad responses (4XX or 5XX)
-        return r.json()
-    except requests.exceptions.Timeout:
+        with httpx.Client(follow_redirects=True) as client:
+            r = client.get(api_url_base + record_id, params=params, timeout=timeout_val)
+            r.raise_for_status()  # Raises HTTPError for bad responses (4XX or 5XX)
+            return r.json()
+    except httpx.TimeoutException:
         msg = f"Timeout when fetching metadata for record {record_id} from {api_url_base + record_id}"
-        eprint(msg)
+        logger.error(msg)
         if exceptions_on_failure:
             raise ConnectionError(msg)
         else:
             sys.exit(1)
-    except requests.exceptions.HTTPError as e:
-        msg = f"HTTP error fetching metadata for record {record_id}: {e.response.status_code} - {e.response.reason} from {api_url_base + record_id}"
-        eprint(msg)
+    except httpx.HTTPStatusError as e:
+        msg = f"HTTP error fetching metadata for record {record_id}: {e.response.status_code} - {e.response.reason_phrase} from {api_url_base + record_id}"
+        logger.error(msg)
         if exceptions_on_failure:
             raise ValueError(msg)
         else:
             sys.exit(1)
-    except requests.exceptions.RequestException as e:
+    except httpx.RequestError as e:
         msg = f"Error fetching metadata for record {record_id} from {api_url_base + record_id}: {e}"
-        eprint(msg)
+        logger.error(msg)
         if exceptions_on_failure:
             raise ConnectionError(msg)
         else:
@@ -122,7 +117,7 @@ def _filter_files_from_metadata(metadata_json, glob_str, record_id):
 
     files_in_metadata = metadata_json.get("files", [])
     if not files_in_metadata:
-        eprint(f"No files found in metadata for record {record_id}.")
+        logger.error(f"No files found in metadata for record {record_id}.")
         return []
 
     matched_files = []
@@ -134,12 +129,12 @@ def _filter_files_from_metadata(metadata_json, glob_str, record_id):
             elif any(fnmatch(filename, pattern) for pattern in glob_str):
                 matched_files.append(f_meta)
         else:
-            eprint(
+            logger.warning(
                 f"Skipping file metadata entry due to missing filename/key: {f_meta.get('id', 'Unknown ID')}"
             )
 
     if not matched_files and glob_str:
-        eprint(
+        logger.warning(
             f"Files matching patterns '{glob_str}' not found in metadata for record {record_id}"
         )
 
@@ -171,13 +166,13 @@ def _handle_single_file_download(
     size = humanize.naturalsize(file_info.get("filesize") or file_info["size"])
     checksum = file_info["checksum"].split(":")[-1]
 
-    eprint(f"File: {fname} ({size})")
-    eprint(f"Link: {link}")
+    logger.info(f"File: {fname} ({size})")
+    logger.info(f"Link: {link}")
 
     if cont_download:
         remote_hash_val, local_hash_val = check_hash(fname, checksum)
         if remote_hash_val == local_hash_val:
-            eprint(f"{fname} is already downloaded correctly.")
+            logger.info(f"{fname} is already downloaded correctly.")
             return True
 
     current_retry = 0
@@ -199,29 +194,29 @@ def _handle_single_file_download(
             if (
                 fname != wget_filename
             ):  # Should ideally not happen if out=fname works as expected
-                eprint(
-                    f"Warning: Downloaded filename '{wget_filename}' differs from expected '{fname}'. Renaming."
+                logger.warning(
+                    f"Downloaded filename '{wget_filename}' differs from expected '{fname}'. Renaming."
                 )
                 os.rename(wget_filename, fname)
             download_successful_flag = True
             break
         except Exception as e_download:
-            eprint(f"  Download error for {fname}: {e_download}")
+            logger.error(f"Download error for {fname}: {e_download}")
             current_retry += 1
             if current_retry <= retry_limit:
-                eprint(f"  Retrying ({current_retry}/{retry_limit})...")
+                logger.info(f"Retrying ({current_retry}/{retry_limit})...")
                 time.sleep(pause_duration)
             else:
-                eprint(f"  Too many errors for {fname}.")
+                logger.error(f"Too many errors for {fname}.")
                 if not error_continues:
                     msg = f"Download aborted for {fname} after {retry_limit} retries."
-                    eprint(msg)
+                    logger.error(msg)
                     if exceptions_on_failure:
                         raise Exception(msg)
                     else:
                         sys.exit(1)
                 else:
-                    eprint(f"  Skipping {fname} and continuing with the next file.")
+                    logger.warning(f"Skipping {fname} and continuing with the next file.")
                     return (
                         False  # Indicate failure for this file, but allow continuation
                     )
@@ -231,25 +226,25 @@ def _handle_single_file_download(
     ):  # Should only be reached if error_continues was true and all retries failed
         return False
 
-    eprint()  # Newline after download progress
+    logger.info("")  # Newline after download progress
     h1, h2 = check_hash(fname, checksum)
     if h1 == h2:
-        eprint(f"Checksum is correct for {fname}. ({h1})")
+        logger.success(f"Checksum is correct for {fname}. ({h1})")
         return True
     else:
-        eprint(f"Checksum is INCORRECT for {fname}! (Expected: {h1} Got: {h2})")
+        logger.error(f"Checksum is INCORRECT for {fname}! (Expected: {h1} Got: {h2})")
         if not keep_invalid:
-            eprint(f"  File {fname} is deleted.")
+            logger.info(f"File {fname} is deleted.")
             try:
                 os.remove(fname)
             except OSError as e_remove:
-                eprint(f"  Error deleting file {fname}: {e_remove}")
+                logger.error(f"Error deleting file {fname}: {e_remove}")
         else:
-            eprint(f"  File {fname} is NOT deleted!")
+            logger.warning(f"File {fname} is NOT deleted!")
 
         if not error_continues:
             msg = f"Aborting due to checksum error for {fname}."
-            eprint(msg)
+            logger.error(msg)
             if exceptions_on_failure:
                 raise Exception(msg)
             else:
@@ -386,6 +381,11 @@ def cli(
     access_token_opt,
     glob_str_opt,
 ):
+    """CLI mode - uses signal handling and can exit directly."""
+    # Configure logging for CLI mode
+    logger.remove()  # Remove default handler
+    logger.add(sys.stderr, format="<level>{level}</level>: {message}", level="INFO")
+    
     cont_opt = not start_fresh_opt
 
     if cite_opt:
@@ -425,12 +425,10 @@ def cli(
             sandbox_opt,
             access_token_opt,
             glob_str_opt,
-            exceptions_on_failure=False,
+            exceptions_on_failure=False,  # CLI mode uses sys.exit for errors
         )
-    except (
-        Exception
-    ) as e:  # Catch-all for unexpected errors from _zenodo_download_logic
-        eprint(f"An unexpected error occurred in download logic: {e}")
+    except Exception as e:  # Catch-all for unexpected errors from _zenodo_download_logic
+        logger.error(f"An unexpected error occurred in download logic: {e}")
         sys.exit(1)
 
 
@@ -462,23 +460,39 @@ def _zenodo_download_logic(
                 else "https://doi.org/" + actual_doi
             )
             try:
-                r_doi = requests.get(doi_url, timeout=timeout_val_opt)
-                r_doi.raise_for_status()
-                recordID_to_fetch = r_doi.url.split("/")[-1]
-            except requests.exceptions.Timeout:
+                with httpx.Client(follow_redirects=True) as client:
+                    r_doi = client.get(doi_url, timeout=timeout_val_opt)
+                    r_doi.raise_for_status()
+                    recordID_to_fetch = str(r_doi.url).split("/")[-1]
+            except httpx.TimeoutException:
                 msg = f"Timeout resolving DOI: {doi_url}"
-                eprint(msg)
+                logger.error(msg)
                 if exceptions_on_failure:
                     raise ConnectionError(msg)
                 else:
                     sys.exit(1)
-            except requests.exceptions.RequestException as e:
-                msg = f"Error resolving DOI {doi_url}: {e}"
-                eprint(msg)
+            except httpx.HTTPStatusError as e:
+                msg = f"HTTP error resolving DOI {doi_url}: {e.response.status_code} - {e.response.reason_phrase}"
+                logger.error(msg)
                 if exceptions_on_failure:
                     raise ValueError(msg)
                 else:
                     sys.exit(1)
+            except httpx.RequestError as e:
+                msg = f"Error resolving DOI {doi_url}: {e}"
+                logger.error(msg)
+                if exceptions_on_failure:
+                    raise ConnectionError(msg)
+                else:
+                    sys.exit(1)
+
+        if recordID_to_fetch is None:
+            msg = "No record ID or DOI specified."
+            logger.error(msg)
+            if exceptions_on_failure:
+                raise ValueError(msg)
+            else:
+                sys.exit(1)
 
         recordID_to_fetch = recordID_to_fetch.strip()
 
@@ -508,7 +522,7 @@ def _zenodo_download_logic(
                     fname = f_info.get("filename") or f_info["key"]
                     checksum = f_info["checksum"].split(":")[-1]
                     md5file_handle.write(f"{checksum}  {fname}\n")
-            eprint("md5sums.txt created.")
+            logger.info("md5sums.txt created.")
             return  # md5_opt implies no download
 
         if wget_file_opt:
@@ -527,29 +541,29 @@ def _zenodo_download_logic(
             finally:
                 if wget_file_opt != "-":
                     output_target.close()
-            eprint(
+            logger.info(
                 f"URL list written to {'stdout' if wget_file_opt == '-' else wget_file_opt}."
             )
             return  # wget_file_opt implies no download
 
         # Proceed with actual download
-        eprint(f"Title: {metadata['metadata']['title']}")
-        eprint(f"Keywords: {', '.join(metadata['metadata'].get('keywords', []))}")
-        eprint(f"Publication date: {metadata['metadata']['publication_date']}")
-        eprint(f"DOI: {metadata['metadata']['doi']}")
+        logger.info(f"Title: {metadata['metadata']['title']}")
+        logger.info(f"Keywords: {', '.join(metadata['metadata'].get('keywords', []))}")
+        logger.info(f"Publication date: {metadata['metadata']['publication_date']}")
+        logger.info(f"DOI: {metadata['metadata']['doi']}")
         total_size_val = sum(
             (f.get("filesize") or f.get("size")) for f in files_to_download
         )
-        eprint(f"Total size: {humanize.naturalsize(total_size_val)}")
+        logger.info(f"Total size: {humanize.naturalsize(total_size_val)}")
 
         for i, file_info_item in enumerate(files_to_download):
             if abort_signal:
-                eprint(
+                logger.warning(
                     "Download aborted with CTRL+C. Partially downloaded files may exist."
                 )
                 break
 
-            eprint(f"\nDownloading ({i + 1}/{len(files_to_download)}):")
+            logger.info(f"\nDownloading ({i + 1}/{len(files_to_download)}):")
             _handle_single_file_download(
                 file_info=file_info_item,
                 record_id=recordID_to_fetch,
@@ -565,7 +579,7 @@ def _zenodo_download_logic(
             )
         else:  # After for loop, if not broken by abort_signal
             if not abort_signal:
-                eprint("\nAll specified files have been processed.")
+                logger.success("\nAll specified files have been processed.")
 
 
 def download(  # Public API function
@@ -586,6 +600,16 @@ def download(  # Public API function
     file_glob="*",
     exceptions_on_failure=True,
 ):
+    """
+    Public API function for downloading Zenodo records.
+    
+    This function does not register signal handlers and always uses exceptions
+    for error handling, making it safe for use as a library.
+    """
+    # Configure minimal logging for library mode
+    if not logger._core.handlers:
+        logger.add(sys.stderr, format="{level}: {message}", level="WARNING")
+    
     actual_record_id = record
     actual_doi_str = doi
     if record_or_doi:
@@ -598,7 +622,7 @@ def download(  # Public API function
         if exceptions_on_failure:
             raise ValueError("Either record_or_doi, record, or doi must be provided.")
         else:
-            eprint("Error: No record ID or DOI specified.")
+            logger.error("No record ID or DOI specified.")
             sys.exit(1)
 
     outdir_path = Path(output_dir) if isinstance(output_dir, str) else output_dir
