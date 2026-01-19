@@ -18,7 +18,7 @@ from zenodo_get.zget import download, _fetch_record_metadata
 def test_download_error_cases():
     """Test download function error cases."""
     # Test with no arguments and exceptions disabled
-    with mock.patch("sys.exit"):
+    with mock.patch("sys.exit", side_effect=SystemExit(1)):
         try:
             download(exceptions_on_failure=False)
         except SystemExit:
@@ -29,10 +29,11 @@ def test_download_error_cases():
         mock_client.return_value.__enter__.return_value.get.side_effect = Exception(
             "Connection error"
         )
-        try:
-            _fetch_record_metadata("1215979", False, None, 30.0, False)
-        except SystemExit:
-            pass
+        with mock.patch("sys.exit", side_effect=SystemExit(1)):
+            try:
+                _fetch_record_metadata("1215979", False, None, 30.0, False)
+            except SystemExit:
+                pass
 
 
 def test_download_api_coverage():
