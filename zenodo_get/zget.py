@@ -22,9 +22,9 @@ from urllib.parse import unquote
 import click
 import humanize
 import httpx
-import wget
 from loguru import logger
 import zenodo_get as zget
+from zenodo_get.downloader import download_file
 
 
 # see https://stackoverflow.com/questions/431684/how-do-i-change-the-working-directory-in-python/24176022#24176022
@@ -208,7 +208,12 @@ def _handle_single_file_download(
             )
 
             Path(fname).parent.mkdir(parents=True, exist_ok=True)
-            wget_filename = wget.download(download_target_url, out=fname)
+            wget_filename = download_file(
+                download_target_url,
+                out=fname,
+                verbosity="progress",
+                timeout=timeout_val,
+            )
 
             if (
                 fname != wget_filename
