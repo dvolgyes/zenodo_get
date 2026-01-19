@@ -178,7 +178,9 @@ class TestDownloadFile:
         expected_file = output_dir / "detected.txt"
 
         mock_response = MagicMock()
-        mock_response.headers = {"content-disposition": 'attachment; filename="detected.txt"'}
+        mock_response.headers = {
+            "content-disposition": 'attachment; filename="detected.txt"'
+        }
         mock_response.url = f"file://{output_dir}/api/download"
         mock_response.iter_bytes = MagicMock(return_value=iter([test_content]))
         mock_response.raise_for_status = MagicMock()
@@ -199,7 +201,9 @@ class TestDownloadFile:
     def test_download_timeout_handling(self, output_dir: Path) -> None:
         """Test that timeout exceptions are propagated."""
         with patch.object(
-            _client, "stream", side_effect=httpx.TimeoutException("Connection timed out")
+            _client,
+            "stream",
+            side_effect=httpx.TimeoutException("Connection timed out"),
         ):
             with pytest.raises(httpx.TimeoutException):
                 download_file(

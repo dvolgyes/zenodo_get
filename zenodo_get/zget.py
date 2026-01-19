@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Download and manage files from Zenodo research data repository.
+"""
+Download and manage files from Zenodo research data repository.
 
 This module provides both CLI and programmatic interfaces for downloading
 files from Zenodo records, with features like checksum verification,
@@ -32,7 +33,7 @@ from zenodo_get.downloader import download_file
 def cd(newdir: str | Path) -> Iterator[None]:
     """Temporarily change to a different directory, returning to original after."""
     prevdir = Path.cwd()
-    os.chdir(os.path.expanduser(str(newdir)))
+    os.chdir(Path(newdir).expanduser())
     try:
         yield
     finally:
@@ -108,22 +109,19 @@ def _fetch_record_metadata(
         logger.error(msg)
         if exceptions_on_failure:
             raise ConnectionError(msg)
-        else:
-            sys.exit(1)
+        sys.exit(1)
     except httpx.HTTPStatusError as e:
         msg = f"HTTP error fetching metadata for record {record_id}: {e.response.status_code} - {e.response.reason_phrase} from {api_url_base + record_id}"
         logger.error(msg)
         if exceptions_on_failure:
             raise ValueError(msg)
-        else:
-            sys.exit(1)
+        sys.exit(1)
     except httpx.RequestError as e:
         msg = f"Error fetching metadata for record {record_id} from {api_url_base + record_id}: {e}"
         logger.error(msg)
         if exceptions_on_failure:
             raise ConnectionError(msg)
-        else:
-            sys.exit(1)
+        sys.exit(1)
     return None  # Should ideally not be reached if errors cause exit/exception
 
 
@@ -131,7 +129,6 @@ def _filter_files_from_metadata(
     metadata_json: dict[str, Any], glob_str: tuple[str, ...], record_id: str
 ) -> list[dict[str, Any]]:
     """Filters files from metadata based on glob patterns."""
-
     files_in_metadata = metadata_json.get("files", [])
     if not files_in_metadata:
         logger.error(f"No files found in metadata for record {record_id}.")
@@ -141,9 +138,7 @@ def _filter_files_from_metadata(
     for f_meta in files_in_metadata:
         filename = f_meta.get("filename") or f_meta.get("key")
         if filename:
-            if not glob_str:
-                matched_files.append(f_meta)
-            elif any(fnmatch(filename, pattern) for pattern in glob_str):
+            if not glob_str or any(fnmatch(filename, pattern) for pattern in glob_str):
                 matched_files.append(f_meta)
         else:
             logger.warning(
@@ -171,11 +166,11 @@ def _handle_single_file_download(
     error_continues: bool,
     exceptions_on_failure: bool,
 ) -> bool:
-    """Download one file with retry logic and checksum verification.
+    """
+    Download one file with retry logic and checksum verification.
 
     Handles the download and verification of a single file.
     """
-
     fname = file_info.get("filename") or file_info["key"]
     # Prefer direct download link from metadata if available
     link = file_info.get("links", {}).get("self")
@@ -237,8 +232,7 @@ def _handle_single_file_download(
                     logger.error(msg)
                     if exceptions_on_failure:
                         raise Exception(msg)
-                    else:
-                        sys.exit(1)
+                    sys.exit(1)
                 else:
                     logger.warning(
                         f"Skipping {fname} and continuing with the next file."
@@ -257,25 +251,23 @@ def _handle_single_file_download(
     if h1 == h2:
         logger.success(f"Checksum is correct for {fname}. ({h1})")
         return True
+    logger.error(f"Checksum is INCORRECT for {fname}! (Expected: {h1} Got: {h2})")
+    if not keep_invalid:
+        logger.info(f"File {fname} is deleted.")
+        try:
+            Path(fname).unlink()
+        except OSError as e_remove:
+            logger.error(f"Error deleting file {fname}: {e_remove}")
     else:
-        logger.error(f"Checksum is INCORRECT for {fname}! (Expected: {h1} Got: {h2})")
-        if not keep_invalid:
-            logger.info(f"File {fname} is deleted.")
-            try:
-                Path(fname).unlink()
-            except OSError as e_remove:
-                logger.error(f"Error deleting file {fname}: {e_remove}")
-        else:
-            logger.warning(f"File {fname} is NOT deleted!")
+        logger.warning(f"File {fname} is NOT deleted!")
 
-        if not error_continues:
-            msg = f"Aborting due to checksum error for {fname}."
-            logger.error(msg)
-            if exceptions_on_failure:
-                raise Exception(msg)
-            else:
-                sys.exit(1)
-        return False  # Checksum failed, but error_continues is true
+    if not error_continues:
+        msg = f"Aborting due to checksum error for {fname}."
+        logger.error(msg)
+        if exceptions_on_failure:
+            raise Exception(msg)
+        sys.exit(1)
+    return False  # Checksum failed, but error_continues is true
 
 
 def _zenodo_download_logic(
@@ -316,30 +308,26 @@ def _zenodo_download_logic(
                 logger.error(msg)
                 if exceptions_on_failure:
                     raise ConnectionError(msg)
-                else:
-                    sys.exit(1)
+                sys.exit(1)
             except httpx.HTTPStatusError as e:
                 msg = f"HTTP error resolving DOI {doi_url}: {e.response.status_code} - {e.response.reason_phrase}"
                 logger.error(msg)
                 if exceptions_on_failure:
                     raise ValueError(msg)
-                else:
-                    sys.exit(1)
+                sys.exit(1)
             except httpx.RequestError as e:
                 msg = f"Error resolving DOI {doi_url}: {e}"
                 logger.error(msg)
                 if exceptions_on_failure:
                     raise ConnectionError(msg)
-                else:
-                    sys.exit(1)
+                sys.exit(1)
 
         if recordID_to_fetch is None:
             msg = "No record ID or DOI specified."
             logger.error(msg)
             if exceptions_on_failure:
                 raise ValueError(msg)
-            else:
-                sys.exit(1)
+            sys.exit(1)
 
         recordID_to_fetch = recordID_to_fetch.strip()
 
@@ -447,7 +435,8 @@ def download(  # Public API function
     file_glob: str | tuple[str, ...] = "*",
     exceptions_on_failure: bool = True,
 ) -> None:
-    """Download files from a Zenodo record programmatically.
+    """
+    Download files from a Zenodo record programmatically.
 
     Public API function for downloading Zenodo records.
 
@@ -469,9 +458,8 @@ def download(  # Public API function
     if actual_doi_str is None and actual_record_id is None:
         if exceptions_on_failure:
             raise ValueError("Either record_or_doi, record, or doi must be provided.")
-        else:
-            logger.error("No record ID or DOI specified.")
-            sys.exit(1)
+        logger.error("No record ID or DOI specified.")
+        sys.exit(1)
 
     outdir_path = Path(output_dir) if isinstance(output_dir, str) else output_dir
 
@@ -634,7 +622,8 @@ def cli(
     access_token_opt: str | None,
     glob_str_opt: tuple[str, ...],
 ) -> None:
-    """Command-line interface for downloading files from Zenodo records.
+    """
+    Command-line interface for downloading files from Zenodo records.
 
     CLI mode - uses signal handling and can exit directly.
     """

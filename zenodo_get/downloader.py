@@ -1,4 +1,5 @@
-"""HTTP file download utilities using httpx.
+"""
+HTTP file download utilities using httpx.
 
 Provides a replacement for wget.download() with httpx-based streaming downloads,
 automatic filename detection, and configurable verbosity.
@@ -19,7 +20,8 @@ atexit.register(_client.close)
 
 
 def _extract_filename_from_content_disposition(header: str | None) -> str | None:
-    """Extract filename from Content-Disposition header.
+    """
+    Extract filename from Content-Disposition header.
 
     Handles quoted, unquoted, and RFC 5987 encoded filenames.
     """
@@ -27,7 +29,9 @@ def _extract_filename_from_content_disposition(header: str | None) -> str | None
         return None
 
     # Try RFC 5987 encoded filename* first (takes precedence)
-    match = re.search(r"filename\*\s*=\s*(?:UTF-8''|utf-8'')(.+?)(?:;|$)", header, re.IGNORECASE)
+    match = re.search(
+        r"filename\*\s*=\s*(?:UTF-8''|utf-8'')(.+?)(?:;|$)", header, re.IGNORECASE
+    )
     if match:
         return unquote(match.group(1).strip())
 
@@ -62,7 +66,8 @@ def download_file(
     timeout: float = 30.0,
     chunk_size: int = 8192,
 ) -> str:
-    """Download a file from URL using httpx with streaming.
+    """
+    Download a file from URL using httpx with streaming.
 
     Args:
         url: The URL to download from.
@@ -80,6 +85,7 @@ def download_file(
         httpx.HTTPStatusError: If the server returns an error status.
         httpx.RequestError: If a request error occurs.
         ValueError: If no filename can be determined.
+
     """
     with _client.stream("GET", url, timeout=timeout) as response:
         response.raise_for_status()
@@ -91,7 +97,9 @@ def download_file(
         else:
             # Try Content-Disposition header first
             content_disposition = response.headers.get("content-disposition")
-            detected_filename = _extract_filename_from_content_disposition(content_disposition)
+            detected_filename = _extract_filename_from_content_disposition(
+                content_disposition
+            )
 
             # Fall back to URL path
             if not detected_filename:
