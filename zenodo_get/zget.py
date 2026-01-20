@@ -527,7 +527,7 @@ def download(  # Public API function
     )
 
 
-@click.command(context_settings={"help_option_names": ["-h", "--help"]})
+@click.command(context_settings={"help_option_names": ["-h", "--help"],'show_default': True})
 @click.version_option(version=version("zenodo-get"), prog_name="zenodo_get")
 @click.argument("record_or_doi", required=False, default=None)
 @click.option(
