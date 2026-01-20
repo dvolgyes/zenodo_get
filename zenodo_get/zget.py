@@ -296,6 +296,9 @@ def _zenodo_download_logic(
     """Orchestrate the complete download workflow for a Zenodo record."""
     outdir_opt.mkdir(parents=True, exist_ok=True)
 
+    if verbosity >= 1:
+        logger.info(f"Output directory: {outdir_opt.resolve()}")
+
     with cd(outdir_opt):
         recordID_to_fetch = actual_record
         if actual_doi is not None:
