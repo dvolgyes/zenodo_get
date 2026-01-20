@@ -318,6 +318,7 @@ class TestHandleSingleFileDownload:
                     timeout_val=30.0,
                     keep_invalid=False,
                     error_continues=False,
+                    verbosity=2,
                     exceptions_on_failure=True,
                 )
                 assert result == True
@@ -349,6 +350,7 @@ class TestHandleSingleFileDownload:
                 timeout_val=30.0,
                 keep_invalid=False,
                 error_continues=False,
+                verbosity=2,
                 exceptions_on_failure=True,
             )
             assert result == False
@@ -384,6 +386,7 @@ class TestHandleSingleFileDownload:
                             timeout_val=30.0,
                             keep_invalid=False,
                             error_continues=False,
+                            verbosity=2,
                             exceptions_on_failure=False,
                         )
 
@@ -422,6 +425,7 @@ class TestHandleSingleFileDownload:
                                 timeout_val=30.0,
                                 keep_invalid=False,
                                 error_continues=False,
+                                verbosity=2,
                                 exceptions_on_failure=False,
                             )
 
@@ -458,6 +462,7 @@ class TestHandleSingleFileDownload:
                         timeout_val=30.0,
                         keep_invalid=False,
                         error_continues=True,
+                        verbosity=2,
                         exceptions_on_failure=True,
                     )
 
@@ -496,6 +501,7 @@ class TestHandleSingleFileDownload:
                         timeout_val=30.0,
                         keep_invalid=False,
                         error_continues=True,
+                        verbosity=2,
                         exceptions_on_failure=True,
                     )
 
@@ -535,6 +541,7 @@ class TestHandleSingleFileDownload:
                         timeout_val=30.0,
                         keep_invalid=True,
                         error_continues=True,
+                        verbosity=2,
                         exceptions_on_failure=True,
                     )
 

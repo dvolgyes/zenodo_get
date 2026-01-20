@@ -297,8 +297,8 @@ class TestCLILogging:
         runner = CliRunner()
         result = runner.invoke(cli, ["1215979", "-m"])
 
-        # Check for INFO level logs
-        assert "INFO:" in result.output
+        # Check for INFO level logs (may have ANSI codes around INFO)
+        assert "INFO" in result.output
         assert "md5sums.txt created" in result.output
 
     def test_error_logging(self):
@@ -306,8 +306,8 @@ class TestCLILogging:
         runner = CliRunner()
         result = runner.invoke(cli, ["invalid_record", "-m"])
 
-        # Check for ERROR level logs
-        assert "ERROR:" in result.output
+        # Check for ERROR level logs (may have ANSI codes around ERROR)
+        assert "ERROR" in result.output
 
 
 def test_cli_coverage_via_subprocess():

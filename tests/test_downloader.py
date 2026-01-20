@@ -121,7 +121,7 @@ class TestDownloadFile:
             result = download_file(
                 "https://example.com/original.txt",
                 out=str(output_file),
-                verbosity="quiet",
+                verbosity=0,
             )
 
         assert result == str(output_file)
@@ -146,12 +146,12 @@ class TestDownloadFile:
                 download_file(
                     "https://example.com/file.txt",
                     out=str(output_file),
-                    verbosity="quiet",
+                    verbosity=0,
                 )
                 mock_logger.debug.assert_not_called()
 
     def test_download_normal_mode_logs(self, output_dir: Path) -> None:
-        """Test download with normal verbosity logs messages."""
+        """Test download with verbosity level 3+ logs debug messages."""
         output_file = output_dir / "normal_test.txt"
         test_content = b"Normal content"
 
@@ -168,7 +168,7 @@ class TestDownloadFile:
                 download_file(
                     "https://example.com/file.txt",
                     out=str(output_file),
-                    verbosity="normal",
+                    verbosity=3,
                 )
                 assert mock_logger.debug.call_count == 2
 
@@ -191,7 +191,7 @@ class TestDownloadFile:
             result = download_file(
                 "https://example.com/api/download",
                 out=str(expected_file),
-                verbosity="quiet",
+                verbosity=0,
             )
 
         assert result == str(expected_file)
@@ -242,10 +242,10 @@ class TestDownloadFile:
 
         with patch.object(_client, "stream", return_value=mock_response):
             with pytest.raises(ValueError, match="Could not determine filename"):
-                download_file("https://example.com/", verbosity="quiet")
+                download_file("https://example.com/", verbosity=0)
 
     def test_download_progress_mode_with_tqdm(self, output_dir: Path) -> None:
-        """Test download with progress verbosity shows tqdm progress bar."""
+        """Test download with verbosity >= 3 shows tqdm progress bar."""
         output_file = output_dir / "progress_test.txt"
         test_content = b"Progress content data"
         content_length = len(test_content)
@@ -267,7 +267,7 @@ class TestDownloadFile:
                 result = download_file(
                     "https://example.com/file.txt",
                     out=str(output_file),
-                    verbosity="progress",
+                    verbosity=3,
                 )
 
                 mock_tqdm.assert_called_once_with(
@@ -283,7 +283,7 @@ class TestDownloadFile:
         assert output_file.exists()
 
     def test_download_progress_mode_no_content_length(self, output_dir: Path) -> None:
-        """Test progress mode falls back to no progress bar when content-length missing."""
+        """Test verbosity >= 3 falls back to no progress bar when content-length missing."""
         output_file = output_dir / "no_content_length.txt"
         test_content = b"No content length"
 
@@ -300,7 +300,7 @@ class TestDownloadFile:
                 download_file(
                     "https://example.com/file.txt",
                     out=str(output_file),
-                    verbosity="progress",
+                    verbosity=3,
                 )
                 # tqdm should not be called when content-length is 0
                 mock_tqdm.assert_not_called()

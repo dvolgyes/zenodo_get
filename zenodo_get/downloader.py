@@ -8,7 +8,6 @@ automatic filename detection, and configurable verbosity.
 import atexit
 import re
 from pathlib import Path
-from typing import Literal
 from urllib.parse import unquote, urlparse
 
 import httpx
@@ -62,7 +61,7 @@ def _extract_filename_from_url(url: str) -> str | None:
 def download_file(
     url: str,
     out: str | Path | None = None,
-    verbosity: Literal["quiet", "normal", "progress"] = "normal",
+    verbosity: int = 2,
     timeout: float = 30.0,
     chunk_size: int = 8192,
 ) -> str:
@@ -73,7 +72,8 @@ def download_file(
         url: The URL to download from.
         out: Output filename or path. If None, filename is detected from
             Content-Disposition header or URL path.
-        verbosity: "quiet" for no logs, "normal" or "progress" for debug logs.
+        verbosity: Integer verbosity level (0-4).
+            0=silent, 1=minimal, 2=normal, 3=nested progress bars, 4=full.
         timeout: Connection timeout in seconds.
         chunk_size: Size of chunks to read during streaming download.
 
@@ -110,7 +110,7 @@ def download_file(
 
             filename = detected_filename
 
-        if verbosity != "quiet":
+        if verbosity >= 3:
             logger.debug(f"Downloading {url} to {filename}")
 
         # Create parent directories if needed
@@ -121,7 +121,7 @@ def download_file(
 
         # Stream download to file
         with output_path.open("wb") as f:
-            if verbosity == "progress" and total_size > 0:
+            if verbosity >= 3 and total_size > 0:
                 from tqdm import tqdm
 
                 with tqdm(
@@ -138,7 +138,7 @@ def download_file(
                 for chunk in response.iter_bytes(chunk_size=chunk_size):
                     f.write(chunk)
 
-        if verbosity != "quiet":
+        if verbosity >= 3:
             logger.debug(f"Downloaded {filename}")
 
         return filename

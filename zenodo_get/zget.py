@@ -163,6 +163,7 @@ def _handle_single_file_download(
     timeout_val: float,  # timeout_val is not directly used by wget.download, but good to have if we change download method
     keep_invalid: bool,
     error_continues: bool,
+    verbosity: int,
     exceptions_on_failure: bool,
 ) -> bool:
     """
@@ -179,8 +180,10 @@ def _handle_single_file_download(
     size = humanize.naturalsize(file_info.get("filesize") or file_info["size"])
     checksum = file_info["checksum"].split(":")[-1]
 
-    logger.info(f"File: {fname} ({size})")
-    logger.info(f"Link: {link}")
+    # Level 4: log file details
+    if verbosity >= 4:
+        logger.info(f"File: {fname} ({size})")
+        logger.info(f"Link: {link}")
 
     if cont_download:
         remote_hash_val, local_hash_val = check_hash(fname, checksum)
@@ -205,7 +208,7 @@ def _handle_single_file_download(
             wget_filename = download_file(
                 download_target_url,
                 out=fname,
-                verbosity="progress",
+                verbosity=verbosity,
                 timeout=timeout_val,
             )
 
@@ -245,14 +248,17 @@ def _handle_single_file_download(
     ):  # Should only be reached if error_continues was true and all retries failed
         return False
 
-    logger.info("")  # Newline after download progress
+    if verbosity >= 4:
+        logger.info("")  # Newline after download progress
     h1, h2 = check_hash(fname, checksum)
     if h1 == h2:
-        logger.success(f"Checksum is correct for {fname}. ({h1})")
+        if verbosity >= 4:
+            logger.success(f"Checksum is correct for {fname}. ({h1})")
         return True
     logger.error(f"Checksum is INCORRECT for {fname}! (Expected: {h1} Got: {h2})")
     if not keep_invalid:
-        logger.info(f"File {fname} is deleted.")
+        if verbosity >= 4:
+            logger.info(f"File {fname} is deleted.")
         try:
             Path(fname).unlink()
         except OSError as e_remove:
@@ -284,6 +290,7 @@ def _zenodo_download_logic(
     sandbox_opt: bool,
     access_token_opt: str | None,
     glob_str_opt: tuple[str, ...],
+    verbosity: int,
     exceptions_on_failure: bool,
 ) -> None:
     """Orchestrate the complete download workflow for a Zenodo record."""
@@ -381,23 +388,49 @@ def _zenodo_download_logic(
             return  # wget_file_opt implies no download
 
         # Proceed with actual download
-        logger.info(f"Title: {metadata['metadata']['title']}")
-        logger.info(f"Keywords: {', '.join(metadata['metadata'].get('keywords', []))}")
-        logger.info(f"Publication date: {metadata['metadata']['publication_date']}")
-        logger.info(f"DOI: {metadata['metadata']['doi']}")
+        # Level 1+: record title and total size
+        if verbosity >= 1:
+            logger.info(f"Title: {metadata['metadata']['title']}")
+        # Level 4: additional metadata
+        if verbosity >= 4:
+            logger.info(
+                f"Keywords: {', '.join(metadata['metadata'].get('keywords', []))}"
+            )
+            logger.info(f"Publication date: {metadata['metadata']['publication_date']}")
+            logger.info(f"DOI: {metadata['metadata']['doi']}")
         total_size_val = sum(
             (f.get("filesize") or f.get("size", 0)) for f in files_to_download
         )
-        logger.info(f"Total size: {humanize.naturalsize(total_size_val)}")
+        if verbosity >= 1:
+            logger.info(f"Total size: {humanize.naturalsize(total_size_val)}")
+            logger.info(f"Number of files: {len(files_to_download)}")
 
-        for i, file_info_item in enumerate(files_to_download):
+        # Level 2+: overall progress bar
+        from collections.abc import Iterable
+
+        from tqdm import tqdm
+
+        file_iterator: Iterable[tuple[int, dict[str, Any]]]
+        if verbosity >= 2:
+            file_iterator = tqdm(
+                enumerate(files_to_download),
+                total=len(files_to_download),
+                desc="Files",
+                leave=False,
+                unit="file",
+            )
+        else:
+            file_iterator = enumerate(files_to_download)
+
+        for i, file_info_item in file_iterator:
             if abort_signal:
                 logger.warning(
                     "Download aborted with CTRL+C. Partially downloaded files may exist."
                 )
                 break
 
-            logger.info(f"\nDownloading ({i + 1}/{len(files_to_download)}):")
+            if verbosity >= 4:
+                logger.info(f"\nDownloading ({i + 1}/{len(files_to_download)}):")
             _handle_single_file_download(
                 file_info=file_info_item,
                 record_id=recordID_to_fetch,
@@ -409,11 +442,12 @@ def _zenodo_download_logic(
                 timeout_val=timeout_val_opt,
                 keep_invalid=keep_opt,
                 error_continues=continue_on_error_opt,
+                verbosity=verbosity,
                 exceptions_on_failure=exceptions_on_failure,
             )
         else:  # After for loop, if not broken by abort_signal
-            if not abort_signal:
-                logger.success("\nAll specified files have been processed.")
+            if not abort_signal and verbosity >= 1:
+                logger.success("All specified files have been processed.")
 
 
 def download(  # Public API function
@@ -432,6 +466,7 @@ def download(  # Public API function
     sandbox_url: bool = False,
     access_token: str | None = None,
     file_glob: str | tuple[str, ...] = "*",
+    verbosity: int = 2,
     exceptions_on_failure: bool = True,
 ) -> None:
     """
@@ -484,6 +519,7 @@ def download(  # Public API function
         sandbox_url,
         access_token,
         glob_tuple,
+        verbosity,
         exceptions_on_failure,
     )
 
@@ -603,6 +639,14 @@ def download(  # Public API function
     default=[],
     help="Glob expressions for files, it can be used multiple times. (e.g., -g '*.txt'  -g '*.pdf'). Default: all files.",
 )
+@click.option(
+    "-v",
+    "--verbosity",
+    "verbosity_opt",
+    type=click.IntRange(0, 4),
+    default=2,
+    help="Verbosity level (0-4). 0=silent, 1=minimal, 2=normal, 3=nested progress, 4=full",
+)
 def cli(
     record_or_doi: str | None,
     cite_opt: bool,
@@ -620,15 +664,24 @@ def cli(
     sandbox_opt: bool,
     access_token_opt: str | None,
     glob_str_opt: tuple[str, ...],
+    verbosity_opt: int,
 ) -> None:
     """
     Command-line interface for downloading files from Zenodo records.
 
     CLI mode - uses signal handling and can exit directly.
     """
-    # Configure logging for CLI mode
+    # Configure logging for CLI mode with tqdm compatibility
+    from tqdm import tqdm
+
     logger.remove()  # Remove default handler
-    logger.add(sys.stderr, format="<level>{level}</level>: {message}", level="INFO")
+    if verbosity_opt > 0:
+        logger.add(
+            lambda msg: tqdm.write(msg, end=""),
+            format="<level>{level}</level>: {message}",
+            level="INFO",
+            colorize=True,
+        )
 
     cont_opt = not start_fresh_opt
 
@@ -669,6 +722,7 @@ def cli(
             sandbox_opt,
             access_token_opt,
             glob_str_opt,
+            verbosity_opt,
             exceptions_on_failure=False,  # CLI mode uses sys.exit for errors
         )
     except (
