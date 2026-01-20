@@ -24,7 +24,7 @@ It is recommended to use `uv` for managing Python environments and installing th
 0. The most simple way is to use it as a tool, no installation is needed:
 
    ```bash
-   uv tool run zenodo_get RECORD_ID_OR_DOI
+   uvx zenodo_get RECORD_ID_OR_DOI
    ```
 
 1. Install `uv` (if you haven't already):
@@ -36,25 +36,16 @@ It is recommended to use `uv` for managing Python environments and installing th
    powershell -c "irm https://astral.sh/uv/install.ps1 | iex"
    ```
 
-1. Create a virtual environment and install `zenodo-get`:
-
-   - From PyPI:
-     ```bash
-     uv venv
-     uv pip install zenodo-get
-     source .venv/bin/activate # Or .venv\Scripts\activate on Windows
-     ```
-   - Or from a local source checkout:
-     ```bash
-     uv venv
-     uv pip install .
-     source .venv/bin/activate # Or .venv\Scripts\activate on Windows
-     ```
-
-Traditional pip installation is also supported:
+Traditional pip or pipx installation is also supported:
 
 ```bash
 pip install zenodo-get # Ensure pip is for Python 3.10+
+```
+
+or
+
+```bash
+pipx install zenodo-get # Ensure pip is for Python 3.10+
 ```
 
 Afterwards, you can query the command line options:
@@ -85,8 +76,6 @@ uv run zenodo_get YOUR_RECORD_ID -o output_directory
 # Example: Using a script defined in pyproject.toml (zenodo_get is defined there)
 # uv run zenodo_get YOUR_RECORD_ID
 ```
-
-Pip and pipx also work.
 
 ## Documentation
 

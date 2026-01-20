@@ -54,75 +54,69 @@ class TestFetchRecordMetadata:
 
     def test_fetch_timeout_exception(self):
         """Test timeout handling with exceptions enabled."""
-        with mock.patch("httpx.Client") as mock_client:
-            mock_client.return_value.__enter__.return_value.get.side_effect = (
-                httpx.TimeoutException("Timeout error")
-            )
+        mock_client = mock.Mock()
+        mock_client.get.side_effect = httpx.TimeoutException("Timeout error")
 
+        with mock.patch("zenodo_get.zget.get_client", return_value=mock_client):
             with pytest.raises(ConnectionError, match="Timeout when fetching"):
                 _fetch_record_metadata("1215979", False, None, 30.0, True)
 
     def test_fetch_timeout_no_exception(self):
         """Test timeout handling with exceptions disabled."""
-        with mock.patch("httpx.Client") as mock_client:
-            mock_client.return_value.__enter__.return_value.get.side_effect = (
-                httpx.TimeoutException("Timeout error")
-            )
+        mock_client = mock.Mock()
+        mock_client.get.side_effect = httpx.TimeoutException("Timeout error")
 
+        with mock.patch("zenodo_get.zget.get_client", return_value=mock_client):
             with mock.patch("sys.exit") as mock_exit:
-                result = _fetch_record_metadata("1215979", False, None, 30.0, False)
+                _fetch_record_metadata("1215979", False, None, 30.0, False)
                 mock_exit.assert_called_once_with(1)
 
     def test_fetch_http_error_exception(self):
         """Test HTTP error handling with exceptions enabled."""
-        with mock.patch("httpx.Client") as mock_client:
-            mock_response = mock.Mock()
-            mock_response.status_code = 404
-            mock_response.reason_phrase = "Not Found"
-            mock_client.return_value.__enter__.return_value.get.side_effect = (
-                httpx.HTTPStatusError(
-                    "404 Not Found", request=mock.Mock(), response=mock_response
-                )
-            )
+        mock_client = mock.Mock()
+        mock_response = mock.Mock()
+        mock_response.status_code = 404
+        mock_response.reason_phrase = "Not Found"
+        mock_client.get.side_effect = httpx.HTTPStatusError(
+            "404 Not Found", request=mock.Mock(), response=mock_response
+        )
 
+        with mock.patch("zenodo_get.zget.get_client", return_value=mock_client):
             with pytest.raises(ValueError, match="HTTP error fetching"):
                 _fetch_record_metadata("invalid_id", False, None, 30.0, True)
 
     def test_fetch_http_error_no_exception(self):
         """Test HTTP error handling with exceptions disabled."""
-        with mock.patch("httpx.Client") as mock_client:
-            mock_response = mock.Mock()
-            mock_response.status_code = 404
-            mock_response.reason_phrase = "Not Found"
-            mock_client.return_value.__enter__.return_value.get.side_effect = (
-                httpx.HTTPStatusError(
-                    "404 Not Found", request=mock.Mock(), response=mock_response
-                )
-            )
+        mock_client = mock.Mock()
+        mock_response = mock.Mock()
+        mock_response.status_code = 404
+        mock_response.reason_phrase = "Not Found"
+        mock_client.get.side_effect = httpx.HTTPStatusError(
+            "404 Not Found", request=mock.Mock(), response=mock_response
+        )
 
+        with mock.patch("zenodo_get.zget.get_client", return_value=mock_client):
             with mock.patch("sys.exit") as mock_exit:
-                result = _fetch_record_metadata("invalid_id", False, None, 30.0, False)
+                _fetch_record_metadata("invalid_id", False, None, 30.0, False)
                 mock_exit.assert_called_once_with(1)
 
     def test_fetch_request_exception_exception(self):
         """Test general request exception handling with exceptions enabled."""
-        with mock.patch("httpx.Client") as mock_client:
-            mock_client.return_value.__enter__.return_value.get.side_effect = (
-                httpx.RequestError("Connection failed")
-            )
+        mock_client = mock.Mock()
+        mock_client.get.side_effect = httpx.RequestError("Connection failed")
 
+        with mock.patch("zenodo_get.zget.get_client", return_value=mock_client):
             with pytest.raises(ConnectionError, match="Error fetching metadata"):
                 _fetch_record_metadata("1215979", False, None, 30.0, True)
 
     def test_fetch_request_exception_no_exception(self):
         """Test general request exception handling with exceptions disabled."""
-        with mock.patch("httpx.Client") as mock_client:
-            mock_client.return_value.__enter__.return_value.get.side_effect = (
-                httpx.RequestError("Connection failed")
-            )
+        mock_client = mock.Mock()
+        mock_client.get.side_effect = httpx.RequestError("Connection failed")
 
+        with mock.patch("zenodo_get.zget.get_client", return_value=mock_client):
             with mock.patch("sys.exit") as mock_exit:
-                result = _fetch_record_metadata("1215979", False, None, 30.0, False)
+                _fetch_record_metadata("1215979", False, None, 30.0, False)
                 mock_exit.assert_called_once_with(1)
 
 

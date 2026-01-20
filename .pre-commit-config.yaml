@@ -1,12 +1,24 @@
 repos:
-  - repo: https://github.com/asottile/pyupgrade
-    rev: v3.20.0
+  - repo: 'https://github.com/asottile/pyupgrade'
+    rev: v3.21.2
     hooks:
       - id: pyupgrade
-        args: ['--py312-plus']
-
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+        args:
+          - '--py310-plus'
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.14.13
+    hooks:
+      - id: ruff-check
+        args:
+          - '--fix'
+          - '--ignore=D417,D211,D212'
+          - '--exclude'
+          - tests/
+          - >-
+            --extend-select=ANN,YTT,ASYNC,C4,T20,RET,SIM,PTH,FLY,NPY,PD,UP,FURB,RUF
+      - id: ruff-format
+  - repo: 'https://github.com/pre-commit/pre-commit-hooks'
+    rev: v6.0.0
     hooks:
       - id: check-added-large-files
       - id: check-ast
@@ -19,6 +31,7 @@ repos:
       - id: check-toml
       - id: check-xml
       - id: check-vcs-permalinks
+      - id: check-xml
       - id: check-yaml
       - id: debug-statements
       - id: detect-private-key
@@ -26,53 +39,51 @@ repos:
       - id: requirements-txt-fixer
       - id: forbid-new-submodules
       - id: mixed-line-ending
-        args: ['--fix', 'lf']
+        args:
+          - '--fix'
+          - lf
       - id: trailing-whitespace
-
-  - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.11.12
-    hooks:
-      - id: ruff
-        args: ["--fix"]
-      - id: ruff-format
-
-  - repo: https://github.com/pycqa/flake8
-    rev: "7.2.0"
-    hooks:
-      - id: flake8
-        language_version: python3.12
-        additional_dependencies:
-          - flake8-bandit
-          - flake8-debugger
-          - flake8-pathlib
-          - flake8-super-call
-          - flake8-comprehensions
-        args: ["--ignore=E501,S1,W503", "--exclude=.venv"]
-
   - repo: 'https://github.com/detailyang/pre-commit-shell'
     rev: 1.0.5
     hooks:
       - id: shell-lint
         args:
           - '--format=json'
-
-  - repo: https://github.com/hukkin/mdformat
-    rev: 0.7.22
-    hooks:
-      - id: mdformat
-        additional_dependencies:
-          - mdformat-gfm
-          - mdformat-black
-
-  - repo: https://github.com/pre-commit/mirrors-mypy
-    rev: v1.16.0
+  - repo: 'https://github.com/pre-commit/mirrors-mypy'
+    rev: v1.19.1
     hooks:
       - id: mypy
+        exclude: tests
         additional_dependencies:
           - types-click
           - types-pillow
-        args: [--ignore-missing-imports, --install-types, --non-interactive]
-
+          - types-tqdm
+          - scipy-stubs
+        args:
+          - '--ignore-missing-imports'
+          - '--install-types'
+          - '--non-interactive'
+          - '--python-version=3.12'
+          - '--warn-unused-configs'
+          - '--warn-unused-ignores'
+          - '--warn-redundant-casts'
+          - '--warn-unreachable'
+          - '--show-error-codes'
+          - '--disallow-incomplete-defs'
+          - '--strict-equality'
+          - '--strict-bytes'
+          - '--report-deprecated-as-note'
+          - '--extra-checks'
+          - '--check-untyped-defs'
+          - '--disallow-untyped-defs'
+  - repo: 'https://github.com/executablebooks/mdformat'
+    rev: 1.0.0
+    hooks:
+      - id: mdformat
+        additional_dependencies:
+          - mdformat-ruff
+          - ruff
 ci:
   autoupdate_schedule: monthly
-  skip: [flake8]  # Skip flake8 in CI as it requires dependencies
+  skip:
+    - flake8

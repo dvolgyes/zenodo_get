@@ -25,7 +25,13 @@ import humanize
 import httpx
 from loguru import logger
 import zenodo_get as zget
-from zenodo_get.downloader import download_file
+from zenodo_get.downloader import (
+    configure_client,
+    download_file,
+    get_client,
+    DEFAULT_BACKOFF_FACTOR,
+    DEFAULT_RETRY_TOTAL,
+)
 
 
 # see https://stackoverflow.com/questions/431684/how-do-i-change-the-working-directory-in-python/24176022#24176022
@@ -51,7 +57,7 @@ abort_counter = 0
 
 
 @ctrl_c
-def handle_ctrl_c(*args: Any, **kwargs: Any) -> None:
+def handle_ctrl_c(*args: object, **kwargs: object) -> None:
     """Handle Ctrl+C signal - only active in CLI mode."""
     global abort_signal
     global abort_counter
@@ -100,10 +106,10 @@ def _fetch_record_metadata(
         params["access_token"] = access_token
 
     try:
-        with httpx.Client(follow_redirects=True) as client:
-            r = client.get(api_url_base + record_id, params=params, timeout=timeout_val)
-            r.raise_for_status()  # Raises HTTPError for bad responses (4XX or 5XX)
-            return r.json()
+        client = get_client()
+        r = client.get(api_url_base + record_id, params=params, timeout=timeout_val)
+        r.raise_for_status()
+        return r.json()
     except httpx.TimeoutException:
         msg = f"Timeout when fetching metadata for record {record_id} from {api_url_base + record_id}"
         logger.error(msg)
@@ -308,10 +314,10 @@ def _zenodo_download_logic(
                 else "https://doi.org/" + actual_doi
             )
             try:
-                with httpx.Client(follow_redirects=True) as client:
-                    r_doi = client.get(doi_url, timeout=timeout_val_opt)
-                    r_doi.raise_for_status()
-                    recordID_to_fetch = str(r_doi.url).split("/")[-1]
+                client = get_client()
+                r_doi = client.get(doi_url, timeout=timeout_val_opt)
+                r_doi.raise_for_status()
+                recordID_to_fetch = str(r_doi.url).split("/")[-1]
             except httpx.TimeoutException:
                 msg = f"Timeout resolving DOI: {doi_url}"
                 logger.error(msg)
@@ -370,21 +376,23 @@ def _zenodo_download_logic(
             return  # md5_opt implies no download
 
         if wget_file_opt:
-            output_target = (
-                sys.stdout if wget_file_opt == "-" else Path(wget_file_opt).open("w")
-            )
-            try:
+            if wget_file_opt == "-":
                 for f_info in files_to_download:
                     fname = f_info.get("filename") or f_info["key"]
-                    # Use direct link if available, else construct
                     link = (
                         f_info.get("links", {}).get("self")
                         or f"{download_url_base}{recordID_to_fetch}/files/{fname}"
                     )
-                    output_target.write(link + "\n")
-            finally:
-                if wget_file_opt != "-":
-                    output_target.close()
+                    sys.stdout.write(link + "\n")
+            else:
+                with Path(wget_file_opt).open("w") as output_file:
+                    for f_info in files_to_download:
+                        fname = f_info.get("filename") or f_info["key"]
+                        link = (
+                            f_info.get("links", {}).get("self")
+                            or f"{download_url_base}{recordID_to_fetch}/files/{fname}"
+                        )
+                        output_file.write(link + "\n")
             logger.info(
                 f"URL list written to {'stdout' if wget_file_opt == '-' else wget_file_opt}."
             )
@@ -471,6 +479,8 @@ def download(  # Public API function
     file_glob: str | tuple[str, ...] = "*",
     verbosity: int = 2,
     exceptions_on_failure: bool = True,
+    max_http_retries: int = DEFAULT_RETRY_TOTAL,
+    backoff_factor: float = DEFAULT_BACKOFF_FACTOR,
 ) -> None:
     """
     Download files from a Zenodo record programmatically.
@@ -480,6 +490,12 @@ def download(  # Public API function
     This function does not register signal handlers and always uses exceptions
     for error handling, making it safe for use as a library.
     """
+    # Configure HTTP client with retry settings
+    configure_client(
+        retry_total=max_http_retries,
+        backoff_factor=backoff_factor,
+    )
+
     # Configure minimal logging for library mode
     if not logger._core.handlers:
         logger.add(sys.stderr, format="{level}: {message}", level="WARNING")
@@ -527,7 +543,9 @@ def download(  # Public API function
     )
 
 
-@click.command(context_settings={"help_option_names": ["-h", "--help"],'show_default': True})
+@click.command(
+    context_settings={"help_option_names": ["-h", "--help"], "show_default": True}
+)
 @click.version_option(version=version("zenodo-get"), prog_name="zenodo_get")
 @click.argument("record_or_doi", required=False, default=None)
 @click.option(
@@ -585,7 +603,7 @@ def download(  # Public API function
     "retry_opt",
     type=int,
     default=1,
-    help="Retry on error N more times.",
+    help="Application-level retries for checksum failures and non-HTTP errors. Separate from --max-http-retries.",
 )
 @click.option(
     "-p",
@@ -650,6 +668,20 @@ def download(  # Public API function
     default=2,
     help="Verbosity level (0-4). 0=silent, 1=minimal, 2=normal, 3=nested progress, 4=full",
 )
+@click.option(
+    "--max-http-retries",
+    "max_http_retries_opt",
+    type=int,
+    default=DEFAULT_RETRY_TOTAL,
+    help="HTTP transport-level retries for network errors and 429/5xx responses. Uses exponential backoff.",
+)
+@click.option(
+    "--backoff-factor",
+    "backoff_factor_opt",
+    type=float,
+    default=DEFAULT_BACKOFF_FACTOR,
+    help="Exponential backoff factor for HTTP retries (e.g., 0.5 means 0.5s, 1s, 2s...).",
+)
 def cli(
     record_or_doi: str | None,
     cite_opt: bool,
@@ -668,6 +700,8 @@ def cli(
     access_token_opt: str | None,
     glob_str_opt: tuple[str, ...],
     verbosity_opt: int,
+    max_http_retries_opt: int,
+    backoff_factor_opt: float,
 ) -> None:
     """
     Command-line interface for downloading files from Zenodo records.
@@ -686,14 +720,20 @@ def cli(
             colorize=True,
         )
 
+    # Configure HTTP client with retry settings
+    configure_client(
+        retry_total=max_http_retries_opt,
+        backoff_factor=backoff_factor_opt,
+    )
+
     cont_opt = not start_fresh_opt
 
     if cite_opt:
-        print("Reference for this software:")
-        print(zget.__reference__)
-        print()
-        print("Bibtex format:")
-        print(zget.__bibtex__)
+        click.echo("Reference for this software:")
+        click.echo(zget.__reference__)
+        click.echo()
+        click.echo("Bibtex format:")
+        click.echo(zget.__bibtex__)
         sys.exit(0)
 
     actual_record_id = record

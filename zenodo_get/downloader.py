@@ -11,11 +11,98 @@ from pathlib import Path
 from urllib.parse import unquote, urlparse
 
 import httpx
+from httpx_retries import RetryTransport, Retry
 from loguru import logger
 
-# Long-lived global client for TCP connection reuse
-_client = httpx.Client(follow_redirects=True)
-atexit.register(_client.close)
+# Module-level client and configuration defaults
+_client: httpx.Client | None = None
+
+# Default retry configuration
+DEFAULT_RETRY_TOTAL = 5
+DEFAULT_BACKOFF_FACTOR = 0.5
+DEFAULT_MAX_BACKOFF_WAIT = 120.0
+DEFAULT_RESPECT_RETRY_AFTER_HEADER = True
+
+
+def _create_retry_transport(
+    retry_total: int = DEFAULT_RETRY_TOTAL,
+    backoff_factor: float = DEFAULT_BACKOFF_FACTOR,
+    max_backoff_wait: float = DEFAULT_MAX_BACKOFF_WAIT,
+    respect_retry_after_header: bool = DEFAULT_RESPECT_RETRY_AFTER_HEADER,
+) -> RetryTransport:
+    """Create a retry transport with the specified configuration."""
+    retry = Retry(
+        total=retry_total,
+        backoff_factor=backoff_factor,
+        max_backoff_wait=max_backoff_wait,
+        respect_retry_after_header=respect_retry_after_header,
+    )
+    return RetryTransport(retry=retry)
+
+
+def _close_client() -> None:
+    """Close the module-level client if it exists."""
+    global _client
+    if _client is not None:
+        _client.close()
+        _client = None
+
+
+def get_client() -> httpx.Client:
+    """
+    Get the module-level HTTP client.
+
+    Creates a new client with default retry settings if none exists.
+    """
+    global _client
+    if _client is None:
+        transport = _create_retry_transport()
+        _client = httpx.Client(follow_redirects=True, transport=transport)
+        atexit.register(_close_client)
+    return _client
+
+
+def configure_client(
+    retry_total: int = DEFAULT_RETRY_TOTAL,
+    backoff_factor: float = DEFAULT_BACKOFF_FACTOR,
+    max_backoff_wait: float = DEFAULT_MAX_BACKOFF_WAIT,
+    respect_retry_after_header: bool = DEFAULT_RESPECT_RETRY_AFTER_HEADER,
+) -> None:
+    """
+    Configure the module-level client with specified retry settings.
+
+    Closes any existing client and creates a new one with the given settings.
+    """
+    global _client
+    _close_client()
+    transport = _create_retry_transport(
+        retry_total=retry_total,
+        backoff_factor=backoff_factor,
+        max_backoff_wait=max_backoff_wait,
+        respect_retry_after_header=respect_retry_after_header,
+    )
+    _client = httpx.Client(follow_redirects=True, transport=transport)
+    atexit.register(_close_client)
+
+
+def create_configured_client(
+    retry_total: int = DEFAULT_RETRY_TOTAL,
+    backoff_factor: float = DEFAULT_BACKOFF_FACTOR,
+    max_backoff_wait: float = DEFAULT_MAX_BACKOFF_WAIT,
+    respect_retry_after_header: bool = DEFAULT_RESPECT_RETRY_AFTER_HEADER,
+) -> httpx.Client:
+    """
+    Create an independent HTTP client with specified retry settings.
+
+    The caller is responsible for closing this client.
+    """
+    transport = _create_retry_transport(
+        retry_total=retry_total,
+        backoff_factor=backoff_factor,
+        max_backoff_wait=max_backoff_wait,
+        respect_retry_after_header=respect_retry_after_header,
+    )
+    return httpx.Client(follow_redirects=True, transport=transport)
 
 
 def _extract_filename_from_content_disposition(header: str | None) -> str | None:
@@ -87,7 +174,7 @@ def download_file(
         ValueError: If no filename can be determined.
 
     """
-    with _client.stream("GET", url, timeout=timeout) as response:
+    with get_client().stream("GET", url, timeout=timeout) as response:
         response.raise_for_status()
 
         # Determine output filename

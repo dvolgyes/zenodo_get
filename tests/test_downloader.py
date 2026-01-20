@@ -5,12 +5,18 @@ from unittest.mock import MagicMock, patch
 
 import httpx
 import pytest
+from httpx_retries import RetryTransport
 
 from zenodo_get.downloader import (
-    _client,
+    _close_client,
     _extract_filename_from_content_disposition,
     _extract_filename_from_url,
+    configure_client,
+    create_configured_client,
     download_file,
+    get_client,
+    DEFAULT_BACKOFF_FACTOR,
+    DEFAULT_RETRY_TOTAL,
 )
 
 
@@ -117,7 +123,7 @@ class TestDownloadFile:
         mock_response.__enter__ = MagicMock(return_value=mock_response)
         mock_response.__exit__ = MagicMock(return_value=False)
 
-        with patch.object(_client, "stream", return_value=mock_response):
+        with patch.object(get_client(), "stream", return_value=mock_response):
             result = download_file(
                 "https://example.com/original.txt",
                 out=str(output_file),
@@ -141,7 +147,7 @@ class TestDownloadFile:
         mock_response.__enter__ = MagicMock(return_value=mock_response)
         mock_response.__exit__ = MagicMock(return_value=False)
 
-        with patch.object(_client, "stream", return_value=mock_response):
+        with patch.object(get_client(), "stream", return_value=mock_response):
             with patch("zenodo_get.downloader.logger") as mock_logger:
                 download_file(
                     "https://example.com/file.txt",
@@ -163,7 +169,7 @@ class TestDownloadFile:
         mock_response.__enter__ = MagicMock(return_value=mock_response)
         mock_response.__exit__ = MagicMock(return_value=False)
 
-        with patch.object(_client, "stream", return_value=mock_response):
+        with patch.object(get_client(), "stream", return_value=mock_response):
             with patch("zenodo_get.downloader.logger") as mock_logger:
                 download_file(
                     "https://example.com/file.txt",
@@ -187,7 +193,7 @@ class TestDownloadFile:
         mock_response.__enter__ = MagicMock(return_value=mock_response)
         mock_response.__exit__ = MagicMock(return_value=False)
 
-        with patch.object(_client, "stream", return_value=mock_response):
+        with patch.object(get_client(), "stream", return_value=mock_response):
             result = download_file(
                 "https://example.com/api/download",
                 out=str(expected_file),
@@ -201,7 +207,7 @@ class TestDownloadFile:
     def test_download_timeout_handling(self, output_dir: Path) -> None:
         """Test that timeout exceptions are propagated."""
         with patch.object(
-            _client,
+            get_client(),
             "stream",
             side_effect=httpx.TimeoutException("Connection timed out"),
         ):
@@ -224,7 +230,7 @@ class TestDownloadFile:
         mock_response.__enter__ = MagicMock(return_value=mock_response)
         mock_response.__exit__ = MagicMock(return_value=False)
 
-        with patch.object(_client, "stream", return_value=mock_response):
+        with patch.object(get_client(), "stream", return_value=mock_response):
             with pytest.raises(httpx.HTTPStatusError):
                 download_file(
                     "https://example.com/notfound.txt",
@@ -240,7 +246,7 @@ class TestDownloadFile:
         mock_response.__enter__ = MagicMock(return_value=mock_response)
         mock_response.__exit__ = MagicMock(return_value=False)
 
-        with patch.object(_client, "stream", return_value=mock_response):
+        with patch.object(get_client(), "stream", return_value=mock_response):
             with pytest.raises(ValueError, match="Could not determine filename"):
                 download_file("https://example.com/", verbosity=0)
 
@@ -258,7 +264,7 @@ class TestDownloadFile:
         mock_response.__enter__ = MagicMock(return_value=mock_response)
         mock_response.__exit__ = MagicMock(return_value=False)
 
-        with patch.object(_client, "stream", return_value=mock_response):
+        with patch.object(get_client(), "stream", return_value=mock_response):
             with patch("tqdm.tqdm") as mock_tqdm:
                 mock_pbar = MagicMock()
                 mock_tqdm.return_value.__enter__ = MagicMock(return_value=mock_pbar)
@@ -295,7 +301,7 @@ class TestDownloadFile:
         mock_response.__enter__ = MagicMock(return_value=mock_response)
         mock_response.__exit__ = MagicMock(return_value=False)
 
-        with patch.object(_client, "stream", return_value=mock_response):
+        with patch.object(get_client(), "stream", return_value=mock_response):
             with patch("tqdm.tqdm") as mock_tqdm:
                 download_file(
                     "https://example.com/file.txt",
@@ -313,10 +319,53 @@ class TestGlobalClient:
     """Tests for global httpx client."""
 
     def test_global_client_exists(self) -> None:
-        """Test that global client is created."""
-        assert _client is not None
-        assert isinstance(_client, httpx.Client)
+        """Test that global client is created via get_client()."""
+        client = get_client()
+        assert client is not None
+        assert isinstance(client, httpx.Client)
 
     def test_global_client_follows_redirects(self) -> None:
         """Test that global client is configured to follow redirects."""
-        assert _client.follow_redirects is True
+        client = get_client()
+        assert client.follow_redirects is True
+
+
+class TestClientConfiguration:
+    """Tests for client configuration functionality."""
+
+    def test_default_client_has_retry_transport(self) -> None:
+        """Test that default client has retry transport configured."""
+        _close_client()
+        client = get_client()
+        assert isinstance(client._transport, RetryTransport)
+
+    def test_configure_client_sets_retry_options(self) -> None:
+        """Test that configure_client creates client with specified settings."""
+        _close_client()
+        configure_client(retry_total=3, backoff_factor=1.0)
+        client = get_client()
+        assert isinstance(client, httpx.Client)
+        assert isinstance(client._transport, RetryTransport)
+
+    def test_create_configured_client_independent(self) -> None:
+        """Test that create_configured_client creates an independent client."""
+        client1 = create_configured_client(retry_total=2, backoff_factor=0.25)
+        client2 = create_configured_client(retry_total=4, backoff_factor=1.5)
+        assert client1 is not client2
+        assert isinstance(client1._transport, RetryTransport)
+        assert isinstance(client2._transport, RetryTransport)
+        client1.close()
+        client2.close()
+
+    def test_reconfigure_closes_old_client(self) -> None:
+        """Test that reconfiguring closes the old client."""
+        _close_client()
+        client1 = get_client()
+        configure_client(retry_total=10)
+        client2 = get_client()
+        assert client1 is not client2
+
+    def test_default_values(self) -> None:
+        """Test that default configuration values are correct."""
+        assert DEFAULT_RETRY_TOTAL == 5
+        assert DEFAULT_BACKOFF_FACTOR == 0.5
