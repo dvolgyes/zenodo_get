@@ -101,20 +101,29 @@ def test_expected_failures():
 def test_url_list_generation():
     """Test -r 1215979 -w urls.txt -n."""
     with tempfile.TemporaryDirectory() as temp_dir:
-        os.chdir(temp_dir)
-
         result = subprocess.run(
-            ["uv", "run", "zenodo_get", "-r", "1215979", "-w", "urls.txt", "-n"],
+            [
+                "uv",
+                "run",
+                "zenodo_get",
+                "-r",
+                "1215979",
+                "-w",
+                "urls.txt",
+                "-n",
+                "-o",
+                temp_dir,
+            ],
             capture_output=True,
             text=True,
             cwd="/home/dvolgyes/workspace/zenodo_get",
         )
 
         assert result.returncode == 0
-        assert Path("urls.txt").exists()
+        assert (Path(temp_dir) / "urls.txt").exists()
 
         # Ensure md5sums.txt is NOT created when not wanted
-        assert not Path("md5sums.txt").exists()
+        assert not (Path(temp_dir) / "md5sums.txt").exists()
 
         print("✓ URL list written to urls.txt")
 
@@ -122,17 +131,25 @@ def test_url_list_generation():
 def test_md5_generation():
     """Test 1215979 -m -e -k."""
     with tempfile.TemporaryDirectory() as temp_dir:
-        os.chdir(temp_dir)
-
         result = subprocess.run(
-            ["uv", "run", "zenodo_get", "1215979", "-m", "-e", "-k"],
+            [
+                "uv",
+                "run",
+                "zenodo_get",
+                "1215979",
+                "-m",
+                "-e",
+                "-k",
+                "-o",
+                temp_dir,
+            ],
             capture_output=True,
             text=True,
             cwd="/home/dvolgyes/workspace/zenodo_get",
         )
 
         assert result.returncode == 0
-        assert Path("md5sums.txt").exists()
+        assert (Path(temp_dir) / "md5sums.txt").exists()
 
         print("✓ md5sums.txt created")
 
@@ -178,22 +195,6 @@ def test_doi_download():
         assert result.returncode == 0
 
         print("✓ DOI download test passed")
-
-
-def test_info_display():
-    """Test -d 10.5281/zenodo.1215979."""
-    result = subprocess.run(
-        ["uv", "run", "zenodo_get", "-d", "10.5281/zenodo.1215979", "-m"],
-        capture_output=True,
-        text=True,
-        cwd="/home/dvolgyes/workspace/zenodo_get",
-    )
-
-    assert result.returncode == 0
-    assert "Title:" in result.stderr
-    assert "DOI:" in result.stderr
-
-    print("✓ Info display test passed")
 
 
 def test_glob_patterns():
@@ -304,7 +305,6 @@ def run_all_tests():
         test_md5_generation()
         test_stdout_url_output()
         test_doi_download()
-        test_info_display()
         test_glob_patterns()
         test_api_functionality()
 

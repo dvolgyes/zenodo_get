@@ -122,7 +122,6 @@ def _fetch_record_metadata(
         if exceptions_on_failure:
             raise ConnectionError(msg)
         sys.exit(1)
-    return None  # Should ideally not be reached if errors cause exit/exception
 
 
 def _filter_files_from_metadata(
