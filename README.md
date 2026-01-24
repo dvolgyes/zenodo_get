@@ -18,18 +18,18 @@ The simplest way (no installation needed):
 uvx zenodo_get RECORD_ID_OR_DOI
 ```
 
-Or install with pip/pipx:
+Alternatively, install with pipx or pip:
 
 ```bash
-pip install zenodo-get
-# or
 pipx install zenodo-get
+# or
+pip install zenodo-get
 ```
 
 ## Usage
 
 ```bash
-zenodo_get RECORD_ID_OR_DOI
+uvx zenodo_get RECORD_ID_OR_DOI
 ```
 
 ### Common Options
@@ -58,16 +58,16 @@ zenodo_get RECORD_ID_OR_DOI
 
 ```bash
 # Download all files from a record
-zenodo_get 1234567
+uvx zenodo_get 1234567
 
 # Download only PDFs to a specific directory
-zenodo_get 1234567 -g "*.pdf" -o ./downloads
+uvx zenodo_get 1234567 -g "*.pdf" -o ./downloads
 
 # Generate URL list for external download manager
-zenodo_get 1234567 -w urls.txt
+uvx zenodo_get 1234567 -w urls.txt
 
 # Use DOI instead of record ID
-zenodo_get -d 10.5281/zenodo.1234567
+uvx zenodo_get -d 10.5281/zenodo.1234567
 ```
 
 ## Exit Codes
@@ -80,5 +80,5 @@ zenodo_get -d 10.5281/zenodo.1234567
 If you use this tool in academic work:
 
 ```bash
-zenodo_get --cite
+uvx zenodo_get --cite
 ```
