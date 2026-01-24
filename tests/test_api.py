@@ -22,7 +22,16 @@ except ImportError:
 
 
 def test_api_download_specific_file() -> None:
-    """Verify API can download files matching specific glob patterns."""
+    """Verify API can download files matching specific glob patterns.
+
+    This test verifies that:
+    1. Files matching the glob pattern are downloaded
+    2. Files NOT matching the glob pattern are NOT downloaded (issue #39)
+
+    The Zenodo record 1215979 contains 6 files:
+    - fetch_data.py (should be downloaded with *.py glob)
+    - 5 JSON files (should NOT be downloaded with *.py glob)
+    """
     print("Running API Test: Download specific file (*.py)")
     output_dir = "test_api_r_output"
 
@@ -38,11 +47,24 @@ def test_api_download_specific_file() -> None:
             start_fresh=True,  # Corresponds to -n
             exceptions_on_failure=True,  # Ensure API raises exceptions
         )
+
+        # Verify the matching file WAS downloaded
         assert Path(output_dir, "fetch_data.py").exists(), (
             "fetch_data.py was not downloaded"
         )
+
+        # Verify that ONLY the matching file was downloaded (issue #39)
+        # The record contains 5 JSON files that should NOT be downloaded
+        downloaded_files = os.listdir(output_dir)
+        assert len(downloaded_files) == 1, (
+            f"Expected only 1 file (*.py), but got {len(downloaded_files)}: {downloaded_files}"
+        )
+        assert downloaded_files[0] == "fetch_data.py", (
+            f"Expected only fetch_data.py, but got: {downloaded_files}"
+        )
+
         print(
-            f"API Test: Download specific file (*.py) PASSED. Files in {output_dir}: {os.listdir(output_dir)}"
+            f"API Test: Download specific file (*.py) PASSED. Files in {output_dir}: {downloaded_files}"
         )
     except Exception as e:
         print(f"API Test: Download specific file (*.py) FAILED: {e}")
