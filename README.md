@@ -68,12 +68,62 @@ uvx zenodo_get 1234567 -w urls.txt
 
 # Use DOI instead of record ID
 uvx zenodo_get -d 10.5281/zenodo.1234567
+
 ```
 
-## Exit Codes
+### Exit Codes
 
 - `0`: All files downloaded successfully
 - Non-zero: Error occurred (checksum mismatch, download failure, timeout, etc.)
+
+## Python API
+
+You can use `zenodo_get` as a library in your Python projects.
+
+### Installation
+
+```bash
+# Add to your project
+uv add zenodo-get
+# or
+pip install zenodo-get
+```
+
+### Usage
+
+```python
+from zenodo_get import download
+
+# Download all files from a record
+download("10.5281/zenodo.1234567", output_dir="./data")
+
+# Download only specific files using glob pattern
+download(
+    record_or_doi="1234567",
+    output_dir="./data",
+    file_glob="*.csv",
+)
+
+# Multiple glob patterns
+download(
+    record_or_doi="1234567",
+    output_dir="./data",
+    file_glob=["*.csv", "*.json"],
+)
+```
+
+### Parameters
+
+| Parameter | Type | Default | Description |
+|-----------|------|---------|-------------|
+| `record_or_doi` | `str` | - | Zenodo record ID or DOI |
+| `output_dir` | `str \| Path` | `"."` | Output directory |
+| `file_glob` | `str \| tuple` | `"*"` | Filter files by glob pattern(s) |
+| `md5` | `bool` | `False` | Generate `md5sums.txt` |
+| `continue_on_error` | `bool` | `False` | Continue on download errors |
+| `start_fresh` | `bool` | `False` | Don't resume previous download |
+| `timeout` | `float` | `15.0` | Connection timeout in seconds |
+| `exceptions_on_failure` | `bool` | `True` | Raise exceptions on errors |
 
 ## Citation
 
