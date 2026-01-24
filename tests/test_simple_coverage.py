@@ -12,25 +12,15 @@ import unittest.mock as mock
 # Add parent directory to path for imports
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from zenodo_get.zget import download, _fetch_record_metadata
+from zenodo_get.zget import download
 
 
 def test_download_error_cases():
     """Test download function error cases."""
     # Test with no arguments and exceptions disabled
-    with mock.patch("sys.exit"):
+    with mock.patch("sys.exit", side_effect=SystemExit(1)):
         try:
             download(exceptions_on_failure=False)
-        except SystemExit:
-            pass
-
-    # Test timeout in _fetch_record_metadata
-    with mock.patch("httpx.Client") as mock_client:
-        mock_client.return_value.__enter__.return_value.get.side_effect = Exception(
-            "Connection error"
-        )
-        try:
-            _fetch_record_metadata("1215979", False, None, 30.0, False)
         except SystemExit:
             pass
 

@@ -241,6 +241,72 @@ class TestCLIErrorHandling:
             assert result.exit_code != 0
 
 
+class TestCLIHttpRetryOptions:
+    """Test HTTP retry CLI options."""
+
+    def test_max_http_retries_option(self):
+        """Test --max-http-retries option."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            runner = CliRunner()
+            result = runner.invoke(
+                cli, ["1215979", "--max-http-retries", "3", "-m", "-o", temp_dir]
+            )
+            assert result.exit_code == 0
+            assert "md5sums.txt created" in result.output
+
+    def test_backoff_factor_option(self):
+        """Test --backoff-factor option."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            runner = CliRunner()
+            result = runner.invoke(
+                cli, ["1215979", "--backoff-factor", "1.0", "-m", "-o", temp_dir]
+            )
+            assert result.exit_code == 0
+            assert "md5sums.txt created" in result.output
+
+    def test_combined_http_retry_options(self):
+        """Test --max-http-retries and --backoff-factor together."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            runner = CliRunner()
+            result = runner.invoke(
+                cli,
+                [
+                    "1215979",
+                    "--max-http-retries",
+                    "2",
+                    "--backoff-factor",
+                    "0.25",
+                    "-m",
+                    "-o",
+                    temp_dir,
+                ],
+            )
+            assert result.exit_code == 0
+            assert "md5sums.txt created" in result.output
+
+    def test_invalid_max_http_retries_value(self):
+        """Test invalid --max-http-retries value handling."""
+        runner = CliRunner()
+        result = runner.invoke(cli, ["1215979", "--max-http-retries", "invalid", "-m"])
+        assert result.exit_code != 0
+
+    def test_invalid_backoff_factor_value(self):
+        """Test invalid --backoff-factor value handling."""
+        runner = CliRunner()
+        result = runner.invoke(cli, ["1215979", "--backoff-factor", "invalid", "-m"])
+        assert result.exit_code != 0
+
+    def test_help_shows_http_retry_options(self):
+        """Test that help output includes new HTTP retry options."""
+        runner = CliRunner()
+        result = runner.invoke(cli, ["--help"])
+        assert result.exit_code == 0
+        assert "--max-http-retries" in result.output
+        assert "--backoff-factor" in result.output
+        assert "HTTP transport-level retries" in result.output
+        assert "exponential backoff" in result.output.lower()
+
+
 class TestCLIIntegration:
     """Test CLI integration scenarios."""
 
@@ -297,8 +363,8 @@ class TestCLILogging:
         runner = CliRunner()
         result = runner.invoke(cli, ["1215979", "-m"])
 
-        # Check for INFO level logs
-        assert "INFO:" in result.output
+        # Check for INFO level logs (may have ANSI codes around INFO)
+        assert "INFO" in result.output
         assert "md5sums.txt created" in result.output
 
     def test_error_logging(self):
@@ -306,18 +372,21 @@ class TestCLILogging:
         runner = CliRunner()
         result = runner.invoke(cli, ["invalid_record", "-m"])
 
-        # Check for ERROR level logs
-        assert "ERROR:" in result.output
+        # Check for ERROR level logs (may have ANSI codes around ERROR)
+        assert "ERROR" in result.output
 
 
 def test_cli_coverage_via_subprocess():
     """Test CLI via subprocess to ensure coverage of main execution path."""
+    # Get project root directory relative to this test file
+    project_root = Path(__file__).parent.parent
+
     # Test basic functionality via subprocess
     result = subprocess.run(
         [sys.executable, "-m", "zenodo_get", "--version"],
         capture_output=True,
         text=True,
-        cwd="/home/dvolgyes/workspace/zenodo_get",
+        cwd=project_root,
     )
 
     assert result.returncode == 0
@@ -328,7 +397,7 @@ def test_cli_coverage_via_subprocess():
         [sys.executable, "-m", "zenodo_get", "-h"],
         capture_output=True,
         text=True,
-        cwd="/home/dvolgyes/workspace/zenodo_get",
+        cwd=project_root,
     )
 
     assert result.returncode == 0

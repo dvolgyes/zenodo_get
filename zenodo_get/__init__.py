@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Zenodo_get - Download complete records from the Zenodo research data repository.
+"""
+Zenodo_get - Download complete records from the Zenodo research data repository.
 
 Provides easy programmatic and command-line access to download files
 from Zenodo records using record IDs or DOIs.

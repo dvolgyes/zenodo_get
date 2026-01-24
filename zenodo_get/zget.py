@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Download and manage files from Zenodo research data repository.
+"""
+Download and manage files from Zenodo research data repository.
 
 This module provides both CLI and programmatic interfaces for downloading
 files from Zenodo records, with features like checksum verification,
@@ -22,9 +23,15 @@ from urllib.parse import unquote
 import click
 import humanize
 import httpx
-import wget
 from loguru import logger
 import zenodo_get as zget
+from zenodo_get.downloader import (
+    configure_client,
+    download_file,
+    get_client,
+    DEFAULT_BACKOFF_FACTOR,
+    DEFAULT_RETRY_TOTAL,
+)
 
 
 # see https://stackoverflow.com/questions/431684/how-do-i-change-the-working-directory-in-python/24176022#24176022
@@ -32,7 +39,7 @@ import zenodo_get as zget
 def cd(newdir: str | Path) -> Iterator[None]:
     """Temporarily change to a different directory, returning to original after."""
     prevdir = Path.cwd()
-    os.chdir(os.path.expanduser(str(newdir)))
+    os.chdir(Path(newdir).expanduser())
     try:
         yield
     finally:
@@ -50,7 +57,7 @@ abort_counter = 0
 
 
 @ctrl_c
-def handle_ctrl_c(*args: Any, **kwargs: Any) -> None:
+def handle_ctrl_c(*args: object, **kwargs: object) -> None:
     """Handle Ctrl+C signal - only active in CLI mode."""
     global abort_signal
     global abort_counter
@@ -99,39 +106,34 @@ def _fetch_record_metadata(
         params["access_token"] = access_token
 
     try:
-        with httpx.Client(follow_redirects=True) as client:
-            r = client.get(api_url_base + record_id, params=params, timeout=timeout_val)
-            r.raise_for_status()  # Raises HTTPError for bad responses (4XX or 5XX)
-            return r.json()
+        client = get_client()
+        r = client.get(api_url_base + record_id, params=params, timeout=timeout_val)
+        r.raise_for_status()
+        return r.json()
     except httpx.TimeoutException:
         msg = f"Timeout when fetching metadata for record {record_id} from {api_url_base + record_id}"
         logger.error(msg)
         if exceptions_on_failure:
             raise ConnectionError(msg)
-        else:
-            sys.exit(1)
+        sys.exit(1)
     except httpx.HTTPStatusError as e:
         msg = f"HTTP error fetching metadata for record {record_id}: {e.response.status_code} - {e.response.reason_phrase} from {api_url_base + record_id}"
         logger.error(msg)
         if exceptions_on_failure:
             raise ValueError(msg)
-        else:
-            sys.exit(1)
+        sys.exit(1)
     except httpx.RequestError as e:
         msg = f"Error fetching metadata for record {record_id} from {api_url_base + record_id}: {e}"
         logger.error(msg)
         if exceptions_on_failure:
             raise ConnectionError(msg)
-        else:
-            sys.exit(1)
-    return None  # Should ideally not be reached if errors cause exit/exception
+        sys.exit(1)
 
 
 def _filter_files_from_metadata(
     metadata_json: dict[str, Any], glob_str: tuple[str, ...], record_id: str
 ) -> list[dict[str, Any]]:
     """Filters files from metadata based on glob patterns."""
-
     files_in_metadata = metadata_json.get("files", [])
     if not files_in_metadata:
         logger.error(f"No files found in metadata for record {record_id}.")
@@ -141,9 +143,7 @@ def _filter_files_from_metadata(
     for f_meta in files_in_metadata:
         filename = f_meta.get("filename") or f_meta.get("key")
         if filename:
-            if not glob_str:
-                matched_files.append(f_meta)
-            elif any(fnmatch(filename, pattern) for pattern in glob_str):
+            if not glob_str or any(fnmatch(filename, pattern) for pattern in glob_str):
                 matched_files.append(f_meta)
         else:
             logger.warning(
@@ -169,13 +169,14 @@ def _handle_single_file_download(
     timeout_val: float,  # timeout_val is not directly used by wget.download, but good to have if we change download method
     keep_invalid: bool,
     error_continues: bool,
+    verbosity: int,
     exceptions_on_failure: bool,
 ) -> bool:
-    """Download one file with retry logic and checksum verification.
+    """
+    Download one file with retry logic and checksum verification.
 
     Handles the download and verification of a single file.
     """
-
     fname = file_info.get("filename") or file_info["key"]
     # Prefer direct download link from metadata if available
     link = file_info.get("links", {}).get("self")
@@ -185,8 +186,10 @@ def _handle_single_file_download(
     size = humanize.naturalsize(file_info.get("filesize") or file_info["size"])
     checksum = file_info["checksum"].split(":")[-1]
 
-    logger.info(f"File: {fname} ({size})")
-    logger.info(f"Link: {link}")
+    # Level 4: log file details
+    if verbosity >= 4:
+        logger.info(f"File: {fname} ({size})")
+        logger.info(f"Link: {link}")
 
     if cont_download:
         remote_hash_val, local_hash_val = check_hash(fname, checksum)
@@ -208,7 +211,12 @@ def _handle_single_file_download(
             )
 
             Path(fname).parent.mkdir(parents=True, exist_ok=True)
-            wget_filename = wget.download(download_target_url, out=fname)
+            wget_filename = download_file(
+                download_target_url,
+                out=fname,
+                verbosity=verbosity,
+                timeout=timeout_val,
+            )
 
             if (
                 fname != wget_filename
@@ -232,8 +240,7 @@ def _handle_single_file_download(
                     logger.error(msg)
                     if exceptions_on_failure:
                         raise Exception(msg)
-                    else:
-                        sys.exit(1)
+                    sys.exit(1)
                 else:
                     logger.warning(
                         f"Skipping {fname} and continuing with the next file."
@@ -247,30 +254,31 @@ def _handle_single_file_download(
     ):  # Should only be reached if error_continues was true and all retries failed
         return False
 
-    logger.info("")  # Newline after download progress
+    if verbosity >= 4:
+        logger.info("")  # Newline after download progress
     h1, h2 = check_hash(fname, checksum)
     if h1 == h2:
-        logger.success(f"Checksum is correct for {fname}. ({h1})")
+        if verbosity >= 4:
+            logger.success(f"Checksum is correct for {fname}. ({h1})")
         return True
-    else:
-        logger.error(f"Checksum is INCORRECT for {fname}! (Expected: {h1} Got: {h2})")
-        if not keep_invalid:
+    logger.error(f"Checksum is INCORRECT for {fname}! (Expected: {h1} Got: {h2})")
+    if not keep_invalid:
+        if verbosity >= 4:
             logger.info(f"File {fname} is deleted.")
-            try:
-                Path(fname).unlink()
-            except OSError as e_remove:
-                logger.error(f"Error deleting file {fname}: {e_remove}")
-        else:
-            logger.warning(f"File {fname} is NOT deleted!")
+        try:
+            Path(fname).unlink()
+        except OSError as e_remove:
+            logger.error(f"Error deleting file {fname}: {e_remove}")
+    else:
+        logger.warning(f"File {fname} is NOT deleted!")
 
-        if not error_continues:
-            msg = f"Aborting due to checksum error for {fname}."
-            logger.error(msg)
-            if exceptions_on_failure:
-                raise Exception(msg)
-            else:
-                sys.exit(1)
-        return False  # Checksum failed, but error_continues is true
+    if not error_continues:
+        msg = f"Aborting due to checksum error for {fname}."
+        logger.error(msg)
+        if exceptions_on_failure:
+            raise Exception(msg)
+        sys.exit(1)
+    return False  # Checksum failed, but error_continues is true
 
 
 def _zenodo_download_logic(
@@ -288,10 +296,14 @@ def _zenodo_download_logic(
     sandbox_opt: bool,
     access_token_opt: str | None,
     glob_str_opt: tuple[str, ...],
+    verbosity: int,
     exceptions_on_failure: bool,
 ) -> None:
     """Orchestrate the complete download workflow for a Zenodo record."""
     outdir_opt.mkdir(parents=True, exist_ok=True)
+
+    if verbosity >= 1:
+        logger.info(f"Output directory: {outdir_opt.resolve()}")
 
     with cd(outdir_opt):
         recordID_to_fetch = actual_record
@@ -302,39 +314,35 @@ def _zenodo_download_logic(
                 else "https://doi.org/" + actual_doi
             )
             try:
-                with httpx.Client(follow_redirects=True) as client:
-                    r_doi = client.get(doi_url, timeout=timeout_val_opt)
-                    r_doi.raise_for_status()
-                    recordID_to_fetch = str(r_doi.url).split("/")[-1]
+                client = get_client()
+                r_doi = client.get(doi_url, timeout=timeout_val_opt)
+                r_doi.raise_for_status()
+                recordID_to_fetch = str(r_doi.url).split("/")[-1]
             except httpx.TimeoutException:
                 msg = f"Timeout resolving DOI: {doi_url}"
                 logger.error(msg)
                 if exceptions_on_failure:
                     raise ConnectionError(msg)
-                else:
-                    sys.exit(1)
+                sys.exit(1)
             except httpx.HTTPStatusError as e:
                 msg = f"HTTP error resolving DOI {doi_url}: {e.response.status_code} - {e.response.reason_phrase}"
                 logger.error(msg)
                 if exceptions_on_failure:
                     raise ValueError(msg)
-                else:
-                    sys.exit(1)
+                sys.exit(1)
             except httpx.RequestError as e:
                 msg = f"Error resolving DOI {doi_url}: {e}"
                 logger.error(msg)
                 if exceptions_on_failure:
                     raise ConnectionError(msg)
-                else:
-                    sys.exit(1)
+                sys.exit(1)
 
         if recordID_to_fetch is None:
             msg = "No record ID or DOI specified."
             logger.error(msg)
             if exceptions_on_failure:
                 raise ValueError(msg)
-            else:
-                sys.exit(1)
+            sys.exit(1)
 
         recordID_to_fetch = recordID_to_fetch.strip()
 
@@ -368,44 +376,72 @@ def _zenodo_download_logic(
             return  # md5_opt implies no download
 
         if wget_file_opt:
-            output_target = (
-                sys.stdout if wget_file_opt == "-" else Path(wget_file_opt).open("w")
-            )
-            try:
+            if wget_file_opt == "-":
                 for f_info in files_to_download:
                     fname = f_info.get("filename") or f_info["key"]
-                    # Use direct link if available, else construct
                     link = (
                         f_info.get("links", {}).get("self")
                         or f"{download_url_base}{recordID_to_fetch}/files/{fname}"
                     )
-                    output_target.write(link + "\n")
-            finally:
-                if wget_file_opt != "-":
-                    output_target.close()
+                    sys.stdout.write(link + "\n")
+            else:
+                with Path(wget_file_opt).open("w") as output_file:
+                    for f_info in files_to_download:
+                        fname = f_info.get("filename") or f_info["key"]
+                        link = (
+                            f_info.get("links", {}).get("self")
+                            or f"{download_url_base}{recordID_to_fetch}/files/{fname}"
+                        )
+                        output_file.write(link + "\n")
             logger.info(
                 f"URL list written to {'stdout' if wget_file_opt == '-' else wget_file_opt}."
             )
             return  # wget_file_opt implies no download
 
         # Proceed with actual download
-        logger.info(f"Title: {metadata['metadata']['title']}")
-        logger.info(f"Keywords: {', '.join(metadata['metadata'].get('keywords', []))}")
-        logger.info(f"Publication date: {metadata['metadata']['publication_date']}")
-        logger.info(f"DOI: {metadata['metadata']['doi']}")
+        # Level 1+: record title and total size
+        if verbosity >= 1:
+            logger.info(f"Title: {metadata['metadata']['title']}")
+        # Level 4: additional metadata
+        if verbosity >= 4:
+            logger.info(
+                f"Keywords: {', '.join(metadata['metadata'].get('keywords', []))}"
+            )
+            logger.info(f"Publication date: {metadata['metadata']['publication_date']}")
+            logger.info(f"DOI: {metadata['metadata']['doi']}")
         total_size_val = sum(
             (f.get("filesize") or f.get("size", 0)) for f in files_to_download
         )
-        logger.info(f"Total size: {humanize.naturalsize(total_size_val)}")
+        if verbosity >= 1:
+            logger.info(f"Total size: {humanize.naturalsize(total_size_val)}")
+            logger.info(f"Number of files: {len(files_to_download)}")
 
-        for i, file_info_item in enumerate(files_to_download):
+        # Level 2+: overall progress bar
+        from collections.abc import Iterable
+
+        from tqdm import tqdm
+
+        file_iterator: Iterable[tuple[int, dict[str, Any]]]
+        if verbosity >= 2:
+            file_iterator = tqdm(
+                enumerate(files_to_download),
+                total=len(files_to_download),
+                desc="Files",
+                leave=False,
+                unit="file",
+            )
+        else:
+            file_iterator = enumerate(files_to_download)
+
+        for i, file_info_item in file_iterator:
             if abort_signal:
                 logger.warning(
                     "Download aborted with CTRL+C. Partially downloaded files may exist."
                 )
                 break
 
-            logger.info(f"\nDownloading ({i + 1}/{len(files_to_download)}):")
+            if verbosity >= 4:
+                logger.info(f"\nDownloading ({i + 1}/{len(files_to_download)}):")
             _handle_single_file_download(
                 file_info=file_info_item,
                 record_id=recordID_to_fetch,
@@ -417,11 +453,12 @@ def _zenodo_download_logic(
                 timeout_val=timeout_val_opt,
                 keep_invalid=keep_opt,
                 error_continues=continue_on_error_opt,
+                verbosity=verbosity,
                 exceptions_on_failure=exceptions_on_failure,
             )
         else:  # After for loop, if not broken by abort_signal
-            if not abort_signal:
-                logger.success("\nAll specified files have been processed.")
+            if not abort_signal and verbosity >= 1:
+                logger.success("All specified files have been processed.")
 
 
 def download(  # Public API function
@@ -440,15 +477,25 @@ def download(  # Public API function
     sandbox_url: bool = False,
     access_token: str | None = None,
     file_glob: str | tuple[str, ...] = "*",
+    verbosity: int = 2,
     exceptions_on_failure: bool = True,
+    max_http_retries: int = DEFAULT_RETRY_TOTAL,
+    backoff_factor: float = DEFAULT_BACKOFF_FACTOR,
 ) -> None:
-    """Download files from a Zenodo record programmatically.
+    """
+    Download files from a Zenodo record programmatically.
 
     Public API function for downloading Zenodo records.
 
     This function does not register signal handlers and always uses exceptions
     for error handling, making it safe for use as a library.
     """
+    # Configure HTTP client with retry settings
+    configure_client(
+        retry_total=max_http_retries,
+        backoff_factor=backoff_factor,
+    )
+
     # Configure minimal logging for library mode
     if not logger._core.handlers:
         logger.add(sys.stderr, format="{level}: {message}", level="WARNING")
@@ -464,9 +511,8 @@ def download(  # Public API function
     if actual_doi_str is None and actual_record_id is None:
         if exceptions_on_failure:
             raise ValueError("Either record_or_doi, record, or doi must be provided.")
-        else:
-            logger.error("No record ID or DOI specified.")
-            sys.exit(1)
+        logger.error("No record ID or DOI specified.")
+        sys.exit(1)
 
     outdir_path = Path(output_dir) if isinstance(output_dir, str) else output_dir
 
@@ -492,11 +538,14 @@ def download(  # Public API function
         sandbox_url,
         access_token,
         glob_tuple,
+        verbosity,
         exceptions_on_failure,
     )
 
 
-@click.command(context_settings={"help_option_names": ["-h", "--help"]})
+@click.command(
+    context_settings={"help_option_names": ["-h", "--help"], "show_default": True}
+)
 @click.version_option(version=version("zenodo-get"), prog_name="zenodo_get")
 @click.argument("record_or_doi", required=False, default=None)
 @click.option(
@@ -554,7 +603,7 @@ def download(  # Public API function
     "retry_opt",
     type=int,
     default=1,
-    help="Retry on error N more times.",
+    help="Application-level retries for checksum failures and non-HTTP errors. Separate from --max-http-retries.",
 )
 @click.option(
     "-p",
@@ -611,6 +660,28 @@ def download(  # Public API function
     default=[],
     help="Glob expressions for files, it can be used multiple times. (e.g., -g '*.txt'  -g '*.pdf'). Default: all files.",
 )
+@click.option(
+    "-v",
+    "--verbosity",
+    "verbosity_opt",
+    type=click.IntRange(0, 4),
+    default=2,
+    help="Verbosity level (0-4). 0=silent, 1=minimal, 2=normal, 3=nested progress, 4=full",
+)
+@click.option(
+    "--max-http-retries",
+    "max_http_retries_opt",
+    type=int,
+    default=DEFAULT_RETRY_TOTAL,
+    help="HTTP transport-level retries for network errors and 429/5xx responses. Uses exponential backoff.",
+)
+@click.option(
+    "--backoff-factor",
+    "backoff_factor_opt",
+    type=float,
+    default=DEFAULT_BACKOFF_FACTOR,
+    help="Exponential backoff factor for HTTP retries (e.g., 0.5 means 0.5s, 1s, 2s...).",
+)
 def cli(
     record_or_doi: str | None,
     cite_opt: bool,
@@ -628,23 +699,41 @@ def cli(
     sandbox_opt: bool,
     access_token_opt: str | None,
     glob_str_opt: tuple[str, ...],
+    verbosity_opt: int,
+    max_http_retries_opt: int,
+    backoff_factor_opt: float,
 ) -> None:
-    """Command-line interface for downloading files from Zenodo records.
+    """
+    Command-line interface for downloading files from Zenodo records.
 
     CLI mode - uses signal handling and can exit directly.
     """
-    # Configure logging for CLI mode
+    # Configure logging for CLI mode with tqdm compatibility
+    from tqdm import tqdm
+
     logger.remove()  # Remove default handler
-    logger.add(sys.stderr, format="<level>{level}</level>: {message}", level="INFO")
+    if verbosity_opt > 0:
+        logger.add(
+            lambda msg: tqdm.write(msg, end=""),
+            format="<level>{level}</level>: {message}",
+            level="INFO",
+            colorize=True,
+        )
+
+    # Configure HTTP client with retry settings
+    configure_client(
+        retry_total=max_http_retries_opt,
+        backoff_factor=backoff_factor_opt,
+    )
 
     cont_opt = not start_fresh_opt
 
     if cite_opt:
-        print("Reference for this software:")
-        print(zget.__reference__)
-        print()
-        print("Bibtex format:")
-        print(zget.__bibtex__)
+        click.echo("Reference for this software:")
+        click.echo(zget.__reference__)
+        click.echo()
+        click.echo("Bibtex format:")
+        click.echo(zget.__bibtex__)
         sys.exit(0)
 
     actual_record_id = record
@@ -676,6 +765,7 @@ def cli(
             sandbox_opt,
             access_token_opt,
             glob_str_opt,
+            verbosity_opt,
             exceptions_on_failure=False,  # CLI mode uses sys.exit for errors
         )
     except (
