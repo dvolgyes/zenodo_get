@@ -12,7 +12,7 @@ A Python tool for downloading files from Zenodo records. Requires **Python 3.10+
 
 ## Installation
 
-The simplest way (no installation needed):
+The simplest way (no installation needed) is using [uvx](https://docs.astral.sh/uv/guides/tools/), a tool runner from [uv](https://docs.astral.sh/uv/getting-started/installation/):
 
 ```bash
 uvx zenodo_get RECORD_ID_OR_DOI
