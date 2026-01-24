@@ -8,8 +8,8 @@ ci-test:
 
 test-deploy:
 	rm -fR build dist
-	uv build && twine upload -r pypitest dist/*
+	uv build && twine upload -r pypitest dist/* --verbose
 
-deploy:
+deploy: test
 	rm -fR build dist
-	uv build && twine upload -r pypi dist/*
+	uv build && twine upload -r pypi dist/*  --verbose
