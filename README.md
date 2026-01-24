@@ -68,7 +68,13 @@ uvx zenodo_get 1234567 -w urls.txt
 
 # Use DOI instead of record ID
 uvx zenodo_get -d 10.5281/zenodo.1234567
+
 ```
+
+### Exit Codes
+
+- `0`: All files downloaded successfully
+- Non-zero: Error occurred (checksum mismatch, download failure, timeout, etc.)
 
 ## Python API
 
@@ -118,11 +124,6 @@ download(
 | `start_fresh` | `bool` | `False` | Don't resume previous download |
 | `timeout` | `float` | `15.0` | Connection timeout in seconds |
 | `exceptions_on_failure` | `bool` | `True` | Raise exceptions on errors |
-
-## Exit Codes
-
-- `0`: All files downloaded successfully
-- Non-zero: Error occurred (checksum mismatch, download failure, timeout, etc.)
 
 ## Citation
 
