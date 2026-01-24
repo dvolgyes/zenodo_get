@@ -378,12 +378,15 @@ class TestCLILogging:
 
 def test_cli_coverage_via_subprocess():
     """Test CLI via subprocess to ensure coverage of main execution path."""
+    # Get project root directory relative to this test file
+    project_root = Path(__file__).parent.parent
+
     # Test basic functionality via subprocess
     result = subprocess.run(
         [sys.executable, "-m", "zenodo_get", "--version"],
         capture_output=True,
         text=True,
-        cwd="/home/dvolgyes/workspace/zenodo_get",
+        cwd=project_root,
     )
 
     assert result.returncode == 0
@@ -394,7 +397,7 @@ def test_cli_coverage_via_subprocess():
         [sys.executable, "-m", "zenodo_get", "-h"],
         capture_output=True,
         text=True,
-        cwd="/home/dvolgyes/workspace/zenodo_get",
+        cwd=project_root,
     )
 
     assert result.returncode == 0

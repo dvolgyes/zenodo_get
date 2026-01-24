@@ -15,6 +15,9 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 from zenodo_get import download
 
+# Get project root directory relative to this test file
+PROJECT_ROOT = Path(__file__).parent.parent
+
 
 def test_version_command():
     """Test uv run zenodo_get --version."""
@@ -22,7 +25,7 @@ def test_version_command():
         ["uv", "run", "zenodo_get", "--version"],
         capture_output=True,
         text=True,
-        cwd="/home/dvolgyes/workspace/zenodo_get",
+        cwd=PROJECT_ROOT,
     )
 
     assert result.returncode == 0
@@ -35,7 +38,7 @@ def test_help_command():
         ["uv", "run", "zenodo_get", "-h"],
         capture_output=True,
         text=True,
-        cwd="/home/dvolgyes/workspace/zenodo_get",
+        cwd=PROJECT_ROOT,
     )
 
     assert result.returncode == 0
@@ -48,7 +51,7 @@ def test_cite_command():
         ["uv", "run", "zenodo_get", "--cite"],
         capture_output=True,
         text=True,
-        cwd="/home/dvolgyes/workspace/zenodo_get",
+        cwd=PROJECT_ROOT,
     )
 
     assert result.returncode == 0
@@ -64,7 +67,7 @@ def test_expected_failures():
         ["uv", "run", "zenodo_get", "invalid_doi"],
         capture_output=True,
         text=True,
-        cwd="/home/dvolgyes/workspace/zenodo_get",
+        cwd=PROJECT_ROOT,
     )
     assert result.returncode != 0
 
@@ -73,7 +76,7 @@ def test_expected_failures():
         ["uv", "run", "zenodo_get", "-1", "x"],
         capture_output=True,
         text=True,
-        cwd="/home/dvolgyes/workspace/zenodo_get",
+        cwd=PROJECT_ROOT,
     )
     assert result.returncode != 0
 
@@ -82,7 +85,7 @@ def test_expected_failures():
         ["uv", "run", "zenodo_get", "0", "x"],
         capture_output=True,
         text=True,
-        cwd="/home/dvolgyes/workspace/zenodo_get",
+        cwd=PROJECT_ROOT,
     )
     assert result.returncode != 0
 
@@ -91,7 +94,7 @@ def test_expected_failures():
         ["uv", "run", "zenodo_get", "https://invalid"],
         capture_output=True,
         text=True,
-        cwd="/home/dvolgyes/workspace/zenodo_get",
+        cwd=PROJECT_ROOT,
     )
     assert result.returncode != 0
 
@@ -116,7 +119,7 @@ def test_url_list_generation():
             ],
             capture_output=True,
             text=True,
-            cwd="/home/dvolgyes/workspace/zenodo_get",
+            cwd=PROJECT_ROOT,
         )
 
         assert result.returncode == 0
@@ -145,7 +148,7 @@ def test_md5_generation():
             ],
             capture_output=True,
             text=True,
-            cwd="/home/dvolgyes/workspace/zenodo_get",
+            cwd=PROJECT_ROOT,
         )
 
         assert result.returncode == 0
@@ -160,7 +163,7 @@ def test_stdout_url_output():
         ["uv", "run", "zenodo_get", "-r", "1215979", "-w", "-"],
         capture_output=True,
         text=True,
-        cwd="/home/dvolgyes/workspace/zenodo_get",
+        cwd=PROJECT_ROOT,
     )
 
     assert result.returncode == 0
@@ -189,7 +192,7 @@ def test_doi_download():
             ],
             capture_output=True,
             text=True,
-            cwd="/home/dvolgyes/workspace/zenodo_get",
+            cwd=PROJECT_ROOT,
         )
 
         assert result.returncode == 0
@@ -217,7 +220,7 @@ def test_glob_patterns():
             ],
             capture_output=True,
             text=True,
-            cwd="/home/dvolgyes/workspace/zenodo_get",
+            cwd=PROJECT_ROOT,
         )
 
         assert result.returncode == 0
@@ -244,7 +247,7 @@ def test_glob_patterns():
             ],
             capture_output=True,
             text=True,
-            cwd="/home/dvolgyes/workspace/zenodo_get",
+            cwd=PROJECT_ROOT,
         )
 
         assert result.returncode == 0
