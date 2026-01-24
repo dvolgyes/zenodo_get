@@ -1,4 +1,4 @@
 #!/usr/bin/make
 
 test:
-	@./test.sh
+	uv run pytest -n 4 --cov
