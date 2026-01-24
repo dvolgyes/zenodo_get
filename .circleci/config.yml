@@ -46,7 +46,7 @@ jobs:
       - run:
           name: run tests
           command: |
-            uv run pytest -n 8
+            uv run pytest -n 8 --cov
             uv run codecov
 
       - store_artifacts:

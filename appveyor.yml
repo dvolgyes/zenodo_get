@@ -15,4 +15,4 @@ install:
 build: off
 
 test_script:
-  - uv run pytest -v
+  - uv run pytest -n 8 --cov -v
