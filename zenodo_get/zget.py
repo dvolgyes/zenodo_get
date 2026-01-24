@@ -33,6 +33,11 @@ from zenodo_get.downloader import (
     DEFAULT_RETRY_TOTAL,
 )
 
+# Existing file handling modes
+EXISTING_FILE_OVERWRITE = "overwrite"
+EXISTING_FILE_NO_OVERWRITE = "no_overwrite"
+EXISTING_FILE_IGNORE = "ignore"
+
 
 # see https://stackoverflow.com/questions/431684/how-do-i-change-the-working-directory-in-python/24176022#24176022
 @contextmanager
@@ -171,7 +176,8 @@ def _handle_single_file_download(
     error_continues: bool,
     verbosity: int,
     exceptions_on_failure: bool,
-) -> bool:
+    existing_file_mode: str = EXISTING_FILE_OVERWRITE,
+) -> bool | str:
     """
     Download one file with retry logic and checksum verification.
 
@@ -196,6 +202,21 @@ def _handle_single_file_download(
         if remote_hash_val == local_hash_val:
             logger.info(f"{fname} is already downloaded correctly.")
             return True
+
+        # Handle existing file with mismatched checksum
+        if local_hash_val != "invalid":  # File exists but wrong checksum
+            if existing_file_mode == EXISTING_FILE_NO_OVERWRITE:
+                if verbosity >= 2:
+                    logger.error(f"{fname} exists but not overwritten with new content")
+                return "skipped"
+            if existing_file_mode == EXISTING_FILE_IGNORE:
+                if verbosity >= 2:
+                    logger.warning(f"{fname} exists and ignored (not updating content)")
+                return True
+            # EXISTING_FILE_OVERWRITE (default)
+            if verbosity >= 2:
+                logger.warning(f"{fname} exists but overwriting with new content")
+                # Fall through to download
 
     current_retry = 0
     download_successful_flag = False
@@ -298,6 +319,7 @@ def _zenodo_download_logic(
     glob_str_opt: tuple[str, ...],
     verbosity: int,
     exceptions_on_failure: bool,
+    existing_file_mode: str = EXISTING_FILE_OVERWRITE,
 ) -> None:
     """Orchestrate the complete download workflow for a Zenodo record."""
     outdir_opt.mkdir(parents=True, exist_ok=True)
@@ -433,6 +455,7 @@ def _zenodo_download_logic(
         else:
             file_iterator = enumerate(files_to_download)
 
+        skipped_count = 0
         for i, file_info_item in file_iterator:
             if abort_signal:
                 logger.warning(
@@ -442,7 +465,7 @@ def _zenodo_download_logic(
 
             if verbosity >= 4:
                 logger.info(f"\nDownloading ({i + 1}/{len(files_to_download)}):")
-            _handle_single_file_download(
+            result = _handle_single_file_download(
                 file_info=file_info_item,
                 record_id=recordID_to_fetch,
                 download_url_base=download_url_base,
@@ -455,10 +478,21 @@ def _zenodo_download_logic(
                 error_continues=continue_on_error_opt,
                 verbosity=verbosity,
                 exceptions_on_failure=exceptions_on_failure,
+                existing_file_mode=existing_file_mode,
             )
+            if result == "skipped":
+                skipped_count += 1
         else:  # After for loop, if not broken by abort_signal
             if not abort_signal and verbosity >= 1:
                 logger.success("All specified files have been processed.")
+
+        # Handle no_overwrite mode: exit with error if files were skipped
+        if skipped_count > 0 and existing_file_mode == EXISTING_FILE_NO_OVERWRITE:
+            msg = f"{skipped_count} file(s) exist with mismatched checksums and were not overwritten."
+            logger.error(msg)
+            if exceptions_on_failure:
+                raise Exception(msg)
+            sys.exit(1)
 
 
 def download(  # Public API function
@@ -481,6 +515,7 @@ def download(  # Public API function
     exceptions_on_failure: bool = True,
     max_http_retries: int = DEFAULT_RETRY_TOTAL,
     backoff_factor: float = DEFAULT_BACKOFF_FACTOR,
+    existing_file_mode: str = "overwrite",
 ) -> None:
     """
     Download files from a Zenodo record programmatically.
@@ -490,6 +525,18 @@ def download(  # Public API function
     This function does not register signal handlers and always uses exceptions
     for error handling, making it safe for use as a library.
     """
+    # Validate existing_file_mode parameter
+    valid_modes = (
+        EXISTING_FILE_OVERWRITE,
+        EXISTING_FILE_NO_OVERWRITE,
+        EXISTING_FILE_IGNORE,
+    )
+    if existing_file_mode not in valid_modes:
+        raise ValueError(
+            f"Invalid existing_file_mode: '{existing_file_mode}'. "
+            f"Must be one of: {', '.join(valid_modes)}"
+        )
+
     # Configure HTTP client with retry settings
     configure_client(
         retry_total=max_http_retries,
@@ -540,6 +587,7 @@ def download(  # Public API function
         glob_tuple,
         verbosity,
         exceptions_on_failure,
+        existing_file_mode,
     )
 
 
@@ -682,6 +730,27 @@ def download(  # Public API function
     default=DEFAULT_BACKOFF_FACTOR,
     help="Exponential backoff factor for HTTP retries (e.g., 0.5 means 0.5s, 1s, 2s...).",
 )
+@click.option(
+    "--overwrite",
+    "overwrite_opt",
+    is_flag=True,
+    default=False,
+    help="Re-download and overwrite existing files with mismatched checksums. (Default behavior)",
+)
+@click.option(
+    "--no-overwrite",
+    "no_overwrite_opt",
+    is_flag=True,
+    default=False,
+    help="Do not overwrite existing files with mismatched checksums. Exit with error at end.",
+)
+@click.option(
+    "--ignore-existing-files",
+    "ignore_existing_opt",
+    is_flag=True,
+    default=False,
+    help="Ignore existing files with mismatched checksums. Do not overwrite, no error.",
+)
 def cli(
     record_or_doi: str | None,
     cite_opt: bool,
@@ -702,6 +771,9 @@ def cli(
     verbosity_opt: int,
     max_http_retries_opt: int,
     backoff_factor_opt: float,
+    overwrite_opt: bool,
+    no_overwrite_opt: bool,
+    ignore_existing_opt: bool,
 ) -> None:
     """
     Command-line interface for downloading files from Zenodo records.
@@ -727,6 +799,22 @@ def cli(
     )
 
     cont_opt = not start_fresh_opt
+
+    # Validate mutual exclusivity of existing file mode options
+    mode_count = sum([overwrite_opt, no_overwrite_opt, ignore_existing_opt])
+    if mode_count > 1:
+        raise click.UsageError(
+            "Options --overwrite, --no-overwrite, and --ignore-existing-files "
+            "are mutually exclusive."
+        )
+
+    # Determine existing file mode
+    if no_overwrite_opt:
+        existing_file_mode = EXISTING_FILE_NO_OVERWRITE
+    elif ignore_existing_opt:
+        existing_file_mode = EXISTING_FILE_IGNORE
+    else:
+        existing_file_mode = EXISTING_FILE_OVERWRITE
 
     if cite_opt:
         click.echo("Reference for this software:")
@@ -767,6 +855,7 @@ def cli(
             glob_str_opt,
             verbosity_opt,
             exceptions_on_failure=False,  # CLI mode uses sys.exit for errors
+            existing_file_mode=existing_file_mode,
         )
     except (
         Exception
