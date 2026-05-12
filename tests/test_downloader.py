@@ -3,7 +3,7 @@
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import httpx
+import httpxyz as httpx
 import pytest
 from httpx_retries import RetryTransport
 
@@ -206,17 +206,19 @@ class TestDownloadFile:
 
     def test_download_timeout_handling(self, output_dir: Path) -> None:
         """Test that timeout exceptions are propagated."""
-        with patch.object(
-            get_client(),
-            "stream",
-            side_effect=httpx.TimeoutException("Connection timed out"),
+        with (
+            patch.object(
+                get_client(),
+                "stream",
+                side_effect=httpx.TimeoutException("Connection timed out"),
+            ),
+            pytest.raises(httpx.TimeoutException),
         ):
-            with pytest.raises(httpx.TimeoutException):
-                download_file(
-                    "https://example.com/file.txt",
-                    out=str(output_dir / "timeout_test.txt"),
-                    timeout=5.0,
-                )
+            download_file(
+                "https://example.com/file.txt",
+                out=str(output_dir / "timeout_test.txt"),
+                timeout=5.0,
+            )
 
     def test_download_http_error_handling(self, output_dir: Path) -> None:
         """Test that HTTP errors are propagated."""

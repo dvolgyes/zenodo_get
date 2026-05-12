@@ -8,7 +8,7 @@ module-root = ""
 
 [project]
 name = "zenodo-get"
-version = "3.0.0"
+version = "3.0.1"
 authors = [
   { name = "David Völgyes", email = "david.volgyes@ieee.org" },
 ]
@@ -31,13 +31,13 @@ classifiers = [
     "License :: OSI Approved :: GNU Affero General Public License v3",
 ]
 dependencies = [
-  "httpx",
   "humanize",
   "click",
   "loguru",
   "tqdm",
   "coverage>=7.8.2",
   "httpx-retries>=0.4.5",
+  "httpxyz[brotli,http2,zstd]>=0.30.0",
 ]
 
 [project.urls]

@@ -218,3 +218,4 @@ __marimo__/
 # other
 md5sums.txt
 urls.txt
+.pre-commit-local-config.d/
