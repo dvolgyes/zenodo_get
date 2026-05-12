@@ -13,7 +13,7 @@ import sys
 import tempfile
 import unittest.mock as mock
 from pathlib import Path
-import httpx
+import httpxyz as httpx
 import pytest
 
 # Add parent directory to path for imports

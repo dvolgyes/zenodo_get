@@ -10,7 +10,7 @@ import re
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
-import httpx
+import httpxyz as httpx
 from httpx_retries import RetryTransport, Retry
 from loguru import logger
 
