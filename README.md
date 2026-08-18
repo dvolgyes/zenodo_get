@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/dvolgyes/zenodo_get/actions/workflows/ci.yml/badge.svg)](https://github.com/dvolgyes/zenodo_get/actions/workflows/ci.yml)
 [![Build status](https://img.shields.io/appveyor/build/dvolgyes/zenodo-get)](https://ci.appveyor.com/project/dvolgyes/zenodo-get)
-[![Coverage Status](https://img.shields.io/coveralls/github/dvolgyes/zenodo_get/main)](https://coveralls.io/github/dvolgyes/zenodo_get?branch=main)
+[![Coverage Status](https://coveralls.io/repos/github/dvolgyes/zenodo_get/badge.svg?branch=main)](https://coveralls.io/github/dvolgyes/zenodo_get?branch=main)
 [![pyversion](https://img.shields.io/pypi/pyversions/zenodo_get.svg)](https://pypi.org/project/zenodo-get/)
 [![PyPI - License](https://img.shields.io/pypi/l/zenodo_get.svg)](https://github.com/dvolgyes/zenodo_get/raw/main/LICENSE.txt)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.1261812.svg)](https://doi.org/10.5281/zenodo.1261812)
