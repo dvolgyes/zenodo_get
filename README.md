@@ -1,18 +1,18 @@
 # zenodo_get: a downloader for Zenodo records
 
-[![CI](https://github.com/dvolgyes/zenodo_get/actions/workflows/ci.yml/badge.svg)](https://github.com/dvolgyes/zenodo_get/actions/workflows/ci.yml)
-[![CircleCI](https://circleci.com/gh/dvolgyes/zenodo_get.svg?style=svg)](https://circleci.com/gh/dvolgyes/zenodo_get)
-[![Build status](https://img.shields.io/appveyor/build/dvolgyes/zenodo-get)](https://ci.appveyor.com/project/dvolgyes/zenodo-get)
-[![Coverage Status](https://img.shields.io/coveralls/github/dvolgyes/zenodo_get/master)](https://coveralls.io/github/dvolgyes/zenodo_get?branch=master)
-[![pyversion](https://img.shields.io/pypi/pyversions/zenodo_get.svg)](https://pypi.org/project/zenodo-get/)
-[![PyPI - License](https://img.shields.io/pypi/l/zenodo_get.svg)](https://github.com/dvolgyes/zenodo_get/raw/master/LICENSE.txt)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.1261812.svg)](https://doi.org/10.5281/zenodo.1261812)
-
+[![CI]
+[![CIRCLECI]
+[![BUILD STATUS]
+[![COVERAGE STATUS]
+[![PYVERSION]
+[![PYPI - LICENSE]
+[![DOI]
 A Python tool for downloading files from Zenodo records. Requires **Python 3.10+**.
 
 ## Installation
 
-The simplest way (no installation needed) is using [uvx](https://docs.astral.sh/uv/guides/tools/), a tool runner from [uv](https://docs.astral.sh/uv/getting-started/installation/):
+The simplest way (no installation needed) is using [uvx](https://docs.astral.sh/uv/guides/tools/), a tool runner from
+[uv](https://docs.astral.sh/uv/getting-started/installation/):
 
 ```bash
 uvx zenodo_get RECORD_ID_OR_DOI
@@ -35,7 +35,7 @@ uvx zenodo_get RECORD_ID_OR_DOI
 ### Common Options
 
 | Option | Description |
-|--------|-------------|
+| -- | -- |
 | `-o DIR` | Output directory (created if needed) |
 | `-g PATTERN` | Filter files by glob pattern (e.g., `-g "*.pdf"`) |
 | `-m` | Generate `md5sums.txt` for verification |
@@ -43,11 +43,17 @@ uvx zenodo_get RECORD_ID_OR_DOI
 | `-e` | Continue on error (skip failed files) |
 | `-n` | Start fresh (don't resume previous download) |
 | `-v N` | Verbosity level 0-4 (default: 2) |
+| `--proxy URL` | Use an HTTP(S) or SOCKS5 proxy |
+| `--no-proxy` | Disable proxy use, including environment variables |
+
+Proxy settings follow curl's CGI-safe environment policy: `HTTPS_PROXY`/`https_proxy` apply to HTTPS requests,
+`ALL_PROXY`/`all_proxy` applies to all requests, and `NO_PROXY`/`no_proxy` bypasses matching hosts. `HTTP_PROXY` and
+`http_proxy` are ignored. Detected proxies are logged at verbosity levels above 0 with credentials redacted.
 
 ### Retry Options
 
 | Option | Description |
-|--------|-------------|
+| -- | -- |
 | `--max-http-retries N` | HTTP retries with exponential backoff (default: 5) |
 | `--backoff-factor N` | Backoff multiplier in seconds (default: 0.5) |
 | `-R N` | Application-level retries for checksum failures (default: 1) |
@@ -115,7 +121,7 @@ download(
 ### Parameters
 
 | Parameter | Type | Default | Description |
-|-----------|------|---------|-------------|
+| -- | -- | -- | -- |
 | `record_or_doi` | `str` | - | Zenodo record ID or DOI |
 | `output_dir` | `str \| Path` | `"."` | Output directory |
 | `file_glob` | `str \| tuple` | `"*"` | Filter files by glob pattern(s) |

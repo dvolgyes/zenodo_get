@@ -5,12 +5,14 @@ automatic filename detection, and configurable verbosity.
 """
 
 import atexit
+import ipaddress
 import os
 import re
 import time
+from dataclasses import dataclass
 from email.utils import parsedate_to_datetime
 from pathlib import Path
-from urllib.parse import unquote, urlparse
+from urllib.parse import unquote, urlparse, urlsplit, urlunsplit
 
 import httpx2
 from loguru import logger
@@ -23,6 +25,17 @@ DEFAULT_RETRY_TOTAL = 5
 DEFAULT_BACKOFF_FACTOR = 0.5
 DEFAULT_MAX_BACKOFF_WAIT = 120.0
 DEFAULT_RESPECT_RETRY_AFTER_HEADER = True
+
+
+@dataclass(frozen=True)
+class _ProxySettings:
+    """Resolved proxy settings for one client."""
+
+    https_proxy: str | None = None
+    all_proxy: str | None = None
+    no_proxy: str | None = None
+    https_proxy_source: str | None = None
+    all_proxy_source: str | None = None
 
 
 class _RetryTransport(httpx2.BaseTransport):  # type: ignore[misc]
@@ -94,14 +107,59 @@ class _RetryTransport(httpx2.BaseTransport):  # type: ignore[misc]
         time.sleep(min(self._max_backoff_wait, delay))
 
 
+class _ProxyRoutingTransport(httpx2.BaseTransport):  # type: ignore[misc]
+    """Route requests through scheme-aware proxy or direct transports."""
+
+    def __init__(
+        self,
+        direct_transport: _RetryTransport,
+        https_transport: _RetryTransport | None,
+        all_transport: _RetryTransport | None,
+        no_proxy: str | None,
+    ) -> None:
+        self._direct_transport = direct_transport
+        self._https_transport = https_transport
+        self._all_transport = all_transport
+        self._no_proxy = no_proxy
+
+    def close(self) -> None:
+        """Close all unique transports owned by this router."""
+        transports = {
+            id(transport): transport
+            for transport in (
+                self._direct_transport,
+                self._https_transport,
+                self._all_transport,
+            )
+            if transport is not None
+        }
+        for transport in transports.values():
+            transport.close()
+
+    def handle_request(self, request: httpx2.Request) -> httpx2.Response:
+        """Send a request using the selected proxy route."""
+        host_value = request.url.host
+        host = (
+            host_value.decode("ascii") if isinstance(host_value, bytes) else host_value
+        ).lower()
+        if _matches_no_proxy(host, request.url.port, self._no_proxy):
+            return self._direct_transport.handle_request(request)
+
+        if request.url.scheme == "https" and self._https_transport is not None:
+            return self._https_transport.handle_request(request)
+        if self._all_transport is not None:
+            return self._all_transport.handle_request(request)
+        return self._direct_transport.handle_request(request)
+
+
 def _create_retry_transport(
     retry_total: int = DEFAULT_RETRY_TOTAL,
     backoff_factor: float = DEFAULT_BACKOFF_FACTOR,
     max_backoff_wait: float = DEFAULT_MAX_BACKOFF_WAIT,
     respect_retry_after_header: bool = DEFAULT_RESPECT_RETRY_AFTER_HEADER,
+    proxy: str | None = None,
 ) -> _RetryTransport:
     """Create a retry transport with the specified configuration."""
-    proxy = os.environ.get("HTTPS_PROXY") or os.environ.get("https_proxy")
     transport = httpx2.HTTPTransport(proxy=proxy)
     return _RetryTransport(
         transport=transport,
@@ -112,6 +170,188 @@ def _create_retry_transport(
     )
 
 
+def _create_client_transport(
+    retry_total: int,
+    backoff_factor: float,
+    max_backoff_wait: float,
+    respect_retry_after_header: bool,
+    proxy: str | None,
+    use_environment_proxy: bool,
+    disable_proxy: bool,
+    verbosity: int,
+) -> _ProxyRoutingTransport:
+    """Create a retrying, scheme-aware proxy routing transport."""
+    settings = _resolve_proxy_settings(
+        proxy=proxy,
+        use_environment_proxy=use_environment_proxy,
+        disable_proxy=disable_proxy,
+    )
+    if verbosity > 0:
+        _log_proxy_settings(settings, explicit_proxy=proxy, disabled=disable_proxy)
+
+    def create_transport(proxy_url: str | None) -> _RetryTransport:
+        return _create_retry_transport(
+            retry_total=retry_total,
+            backoff_factor=backoff_factor,
+            max_backoff_wait=max_backoff_wait,
+            respect_retry_after_header=respect_retry_after_header,
+            proxy=proxy_url,
+        )
+
+    direct_transport = create_transport(None)
+    proxy_transports: dict[str, _RetryTransport] = {}
+    for proxy_url in (settings.https_proxy, settings.all_proxy):
+        if proxy_url is not None and proxy_url not in proxy_transports:
+            proxy_transports[proxy_url] = create_transport(proxy_url)
+
+    return _ProxyRoutingTransport(
+        direct_transport=direct_transport,
+        https_transport=(
+            proxy_transports.get(settings.https_proxy)
+            if settings.https_proxy is not None
+            else None
+        ),
+        all_transport=(
+            proxy_transports.get(settings.all_proxy)
+            if settings.all_proxy is not None
+            else None
+        ),
+        no_proxy=settings.no_proxy,
+    )
+
+
+def _resolve_proxy_settings(
+    proxy: str | None,
+    use_environment_proxy: bool,
+    disable_proxy: bool,
+) -> _ProxySettings:
+    """Resolve explicit or curl-compatible environment proxy settings."""
+    if proxy is not None and disable_proxy:
+        raise ValueError("proxy and disable_proxy cannot both be configured")
+    if disable_proxy:
+        return _ProxySettings()
+    no_proxy = _environment_value("NO_PROXY", "no_proxy")
+    if proxy is not None:
+        return _ProxySettings(all_proxy=proxy, no_proxy=no_proxy)
+    if not use_environment_proxy:
+        return _ProxySettings()
+    https_proxy_source, https_proxy = _environment_setting("HTTPS_PROXY", "https_proxy")
+    all_proxy_source, all_proxy = _environment_setting("ALL_PROXY", "all_proxy")
+    return _ProxySettings(
+        https_proxy=https_proxy,
+        all_proxy=all_proxy,
+        no_proxy=no_proxy,
+        https_proxy_source=https_proxy_source,
+        all_proxy_source=all_proxy_source,
+    )
+
+
+def _environment_value(*names: str) -> str | None:
+    """Return the first non-empty environment value for the given names."""
+    for name in names:
+        value = os.environ.get(name)
+        if value:
+            return value
+    return None
+
+
+def _environment_setting(*names: str) -> tuple[str | None, str | None]:
+    """Return the name and first non-empty value of an environment setting."""
+    for name in names:
+        value = os.environ.get(name)
+        if value:
+            return name, value
+    return None, None
+
+
+def _log_proxy_settings(
+    settings: _ProxySettings,
+    explicit_proxy: str | None,
+    disabled: bool,
+) -> None:
+    """Log effective proxy selection without exposing credentials."""
+    if disabled:
+        logger.info("Proxy disabled")
+        return
+    if explicit_proxy is not None:
+        logger.info(f"Using explicit proxy: {_redact_proxy_url(explicit_proxy)}")
+        return
+    if settings.https_proxy is not None:
+        logger.info(
+            f"Detected HTTPS proxy from {settings.https_proxy_source}: "
+            f"{_redact_proxy_url(settings.https_proxy)}"
+        )
+    if settings.all_proxy is not None:
+        logger.info(
+            f"Detected all-protocol proxy from {settings.all_proxy_source}: "
+            f"{_redact_proxy_url(settings.all_proxy)}"
+        )
+
+
+def _matches_no_proxy(host: str, port: int, no_proxy: str | None) -> bool:
+    """Return whether a host and port match a curl-style NO_PROXY list."""
+    if not no_proxy:
+        return False
+    for entry in no_proxy.split(","):
+        candidate = entry.strip().lower()
+        if not candidate:
+            continue
+        if candidate == "*":
+            return True
+        candidate_host, candidate_port = _split_no_proxy_entry(candidate)
+        if candidate_port is not None and candidate_port != port:
+            continue
+        if _matches_no_proxy_host(host, candidate_host):
+            return True
+    return False
+
+
+def _split_no_proxy_entry(entry: str) -> tuple[str, int | None]:
+    """Split a NO_PROXY host entry and optional port."""
+    if entry.startswith("["):
+        closing_bracket = entry.find("]")
+        if closing_bracket != -1:
+            host = entry[1:closing_bracket]
+            port = (
+                entry[closing_bracket + 2 :]
+                if entry[closing_bracket + 1 :].startswith(":")
+                else ""
+            )
+            return host, int(port) if port else None
+    if entry.count(":") == 1:
+        host, port = entry.rsplit(":", 1)
+        if port.isdigit():
+            return host, int(port)
+    return entry, None
+
+
+def _matches_no_proxy_host(host: str, candidate: str) -> bool:
+    """Match a hostname, IP address, or CIDR entry."""
+    candidate = candidate.strip("[]")
+    if "/" in candidate:
+        try:
+            return ipaddress.ip_address(host) in ipaddress.ip_network(
+                candidate, strict=False
+            )
+        except ValueError:
+            return False
+    if candidate.startswith("."):
+        return host.endswith(candidate)
+    return host == candidate or host.endswith(f".{candidate}")
+
+
+def _redact_proxy_url(proxy: str) -> str:
+    """Remove proxy credentials before a proxy URL is written to logs."""
+    parsed = urlsplit(proxy)
+    hostname = parsed.hostname or ""
+    if ":" in hostname and not hostname.startswith("["):
+        hostname = f"[{hostname}]"
+    netloc = hostname
+    if parsed.port is not None:
+        netloc = f"{netloc}:{parsed.port}"
+    return urlunsplit((parsed.scheme, netloc, "", "", ""))
+
+
 def _close_client() -> None:
     """Close the module-level client if it exists."""
     global _client
@@ -120,14 +360,23 @@ def _close_client() -> None:
         _client = None
 
 
-def get_client() -> httpx2.Client:
+def get_client(verbosity: int = 2) -> httpx2.Client:
     """Get the module-level HTTP client.
 
     Creates a new client with default retry settings if none exists.
     """
     global _client
     if _client is None:
-        transport = _create_retry_transport()
+        transport = _create_client_transport(
+            retry_total=DEFAULT_RETRY_TOTAL,
+            backoff_factor=DEFAULT_BACKOFF_FACTOR,
+            max_backoff_wait=DEFAULT_MAX_BACKOFF_WAIT,
+            respect_retry_after_header=DEFAULT_RESPECT_RETRY_AFTER_HEADER,
+            proxy=None,
+            use_environment_proxy=True,
+            disable_proxy=False,
+            verbosity=verbosity,
+        )
         _client = httpx2.Client(follow_redirects=True, transport=transport)
         atexit.register(_close_client)
     return _client
@@ -138,6 +387,10 @@ def configure_client(
     backoff_factor: float = DEFAULT_BACKOFF_FACTOR,
     max_backoff_wait: float = DEFAULT_MAX_BACKOFF_WAIT,
     respect_retry_after_header: bool = DEFAULT_RESPECT_RETRY_AFTER_HEADER,
+    proxy: str | None = None,
+    use_environment_proxy: bool = True,
+    disable_proxy: bool = False,
+    verbosity: int = 2,
 ) -> None:
     """Configure the module-level client with specified retry settings.
 
@@ -145,11 +398,15 @@ def configure_client(
     """
     global _client
     _close_client()
-    transport = _create_retry_transport(
+    transport = _create_client_transport(
         retry_total=retry_total,
         backoff_factor=backoff_factor,
         max_backoff_wait=max_backoff_wait,
         respect_retry_after_header=respect_retry_after_header,
+        proxy=proxy,
+        use_environment_proxy=use_environment_proxy,
+        disable_proxy=disable_proxy,
+        verbosity=verbosity,
     )
     _client = httpx2.Client(follow_redirects=True, transport=transport)
     atexit.register(_close_client)
@@ -160,16 +417,24 @@ def create_configured_client(
     backoff_factor: float = DEFAULT_BACKOFF_FACTOR,
     max_backoff_wait: float = DEFAULT_MAX_BACKOFF_WAIT,
     respect_retry_after_header: bool = DEFAULT_RESPECT_RETRY_AFTER_HEADER,
+    proxy: str | None = None,
+    use_environment_proxy: bool = True,
+    disable_proxy: bool = False,
+    verbosity: int = 2,
 ) -> httpx2.Client:
     """Create an independent HTTP client with specified retry settings.
 
     The caller is responsible for closing this client.
     """
-    transport = _create_retry_transport(
+    transport = _create_client_transport(
         retry_total=retry_total,
         backoff_factor=backoff_factor,
         max_backoff_wait=max_backoff_wait,
         respect_retry_after_header=respect_retry_after_header,
+        proxy=proxy,
+        use_environment_proxy=use_environment_proxy,
+        disable_proxy=disable_proxy,
+        verbosity=verbosity,
     )
     return httpx2.Client(follow_redirects=True, transport=transport)
 
@@ -241,7 +506,9 @@ def download_file(
         ValueError: If no filename can be determined.
 
     """
-    with get_client().stream("GET", url, timeout=timeout) as response:
+    with get_client(verbosity=verbosity).stream(
+        "GET", url, timeout=timeout
+    ) as response:
         response.raise_for_status()
 
         # Determine output filename

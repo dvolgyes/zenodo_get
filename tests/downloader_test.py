@@ -10,6 +10,7 @@ from zenodo_get.downloader import (
     DEFAULT_BACKOFF_FACTOR,
     DEFAULT_RETRY_TOTAL,
     _close_client,
+    _create_client_transport,
     _extract_filename_from_content_disposition,
     _extract_filename_from_url,
     _RetryTransport,
@@ -330,7 +331,7 @@ class TestClientConfiguration:
         """Test that default client has retry transport configured."""
         _close_client()
         client = get_client()
-        assert client._transport._retry_total == DEFAULT_RETRY_TOTAL
+        assert client._transport._direct_transport._retry_total == DEFAULT_RETRY_TOTAL
 
     def test_retry_transport_retries_transient_status(self) -> None:
         """Test that transient HTTP statuses are retried."""
@@ -391,15 +392,15 @@ class TestClientConfiguration:
         configure_client(retry_total=3, backoff_factor=1.0)
         client = get_client()
         assert isinstance(client, httpx2.Client)
-        assert client._transport._retry_total == 3
+        assert client._transport._direct_transport._retry_total == 3
 
     def test_create_configured_client_independent(self) -> None:
         """Test that create_configured_client creates an independent client."""
         client1 = create_configured_client(retry_total=2, backoff_factor=0.25)
         client2 = create_configured_client(retry_total=4, backoff_factor=1.5)
         assert client1 is not client2
-        assert client1._transport._retry_total == 2
-        assert client2._transport._retry_total == 4
+        assert client1._transport._direct_transport._retry_total == 2
+        assert client2._transport._direct_transport._retry_total == 4
         client1.close()
         client2.close()
 
@@ -415,3 +416,104 @@ class TestClientConfiguration:
         """Test that default configuration values are correct."""
         assert DEFAULT_RETRY_TOTAL == 5
         assert DEFAULT_BACKOFF_FACTOR == 0.5
+
+    @pytest.mark.parametrize(
+        ("environment", "expected"),
+        [
+            ({"HTTPS_PROXY": "http://upper.example:8080"}, "http://upper.example:8080"),
+            ({"https_proxy": "http://lower.example:8080"}, "http://lower.example:8080"),
+            ({"ALL_PROXY": "socks5://all.example:1080"}, "socks5://all.example:1080"),
+        ],
+    )
+    def test_detects_curl_proxy_environment(
+        self,
+        monkeypatch: pytest.MonkeyPatch,
+        environment: dict[str, str],
+        expected: str,
+    ) -> None:
+        """Test supported curl proxy variables in precedence order."""
+        for name in (
+            "HTTP_PROXY",
+            "http_proxy",
+            "HTTPS_PROXY",
+            "https_proxy",
+            "ALL_PROXY",
+            "all_proxy",
+        ):
+            monkeypatch.delenv(name, raising=False)
+        for name, value in environment.items():
+            monkeypatch.setenv(name, value)
+
+        with patch("zenodo_get.downloader.httpx2.HTTPTransport") as http_transport:
+            router = _create_client_transport(
+                retry_total=0,
+                backoff_factor=0.0,
+                max_backoff_wait=0.0,
+                respect_retry_after_header=False,
+                proxy=None,
+                use_environment_proxy=True,
+                disable_proxy=False,
+                verbosity=0,
+            )
+            router.close()
+
+        assert any(
+            call.kwargs["proxy"] == expected for call in http_transport.call_args_list
+        )
+
+    def test_ignores_http_proxy_environment(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Test that CGI-injectable HTTP proxy variables are ignored."""
+        for name in ("HTTPS_PROXY", "https_proxy", "ALL_PROXY", "all_proxy"):
+            monkeypatch.delenv(name, raising=False)
+        monkeypatch.setenv("HTTP_PROXY", "http://attacker.example:8080")
+        monkeypatch.setenv("http_proxy", "http://attacker.example:8081")
+
+        with patch("zenodo_get.downloader.httpx2.HTTPTransport") as http_transport:
+            router = _create_client_transport(
+                retry_total=0,
+                backoff_factor=0.0,
+                max_backoff_wait=0.0,
+                respect_retry_after_header=False,
+                proxy=None,
+                use_environment_proxy=True,
+                disable_proxy=False,
+                verbosity=0,
+            )
+            router.close()
+
+        assert all(
+            call.kwargs["proxy"] is None for call in http_transport.call_args_list
+        )
+
+    def test_proxy_log_redacts_credentials(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Test that detected proxy logs omit proxy credentials."""
+        username = "proxy-user"
+        hidden_value = "proxy-" + "credential"
+        monkeypatch.setenv(
+            "HTTPS_PROXY", f"http://{username}:{hidden_value}@proxy.example:8080"
+        )
+
+        with patch("zenodo_get.downloader.logger.info") as info:
+            with patch("zenodo_get.downloader.httpx2.HTTPTransport"):
+                configure_client(verbosity=1)
+
+        message = info.call_args.args[0]
+        assert "Detected HTTPS proxy from HTTPS_PROXY" in message
+        assert "proxy.example:8080" in message
+        assert hidden_value not in message
+
+    def test_silent_proxy_detection_does_not_log(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Test that verbosity zero suppresses proxy detection logs."""
+        monkeypatch.setenv("HTTPS_PROXY", "http://proxy.example:8080")
+
+        with patch("zenodo_get.downloader.logger.info") as info:
+            with patch("zenodo_get.downloader.httpx2.HTTPTransport"):
+                configure_client(verbosity=0)
+
+        info.assert_not_called()

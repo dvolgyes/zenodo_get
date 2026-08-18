@@ -24,7 +24,7 @@ classifiers = [
 ]
 dependencies = [
   "click",
-  "httpx2[brotli,http2,zstd]>=2.12.0",
+  "httpx2[brotli,http2,socks,zstd]>=2.12.0",
   "humanize",
   "loguru",
   "tqdm",

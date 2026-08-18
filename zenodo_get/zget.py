@@ -524,6 +524,8 @@ def download(  # Public API function
     max_http_retries: int = DEFAULT_RETRY_TOTAL,
     backoff_factor: float = DEFAULT_BACKOFF_FACTOR,
     existing_file_mode: str = "overwrite",
+    proxy: str | None = None,
+    no_proxy: bool = False,
 ) -> None:
     """Download files from a Zenodo record programmatically.
 
@@ -543,11 +545,17 @@ def download(  # Public API function
             f"Invalid existing_file_mode: '{existing_file_mode}'. "
             f"Must be one of: {', '.join(valid_modes)}"
         )
+    if proxy is not None and no_proxy:
+        raise ValueError("proxy and no_proxy cannot both be configured")
 
     # Configure HTTP client with retry settings
     configure_client(
         retry_total=max_http_retries,
         backoff_factor=backoff_factor,
+        proxy=proxy,
+        use_environment_proxy=proxy is None and not no_proxy,
+        disable_proxy=no_proxy,
+        verbosity=verbosity,
     )
 
     # Configure minimal logging for library mode
@@ -738,6 +746,20 @@ def download(  # Public API function
     help="Exponential backoff factor for HTTP retries (e.g., 0.5 means 0.5s, 1s, 2s...).",
 )
 @click.option(
+    "--proxy",
+    "proxy_opt",
+    type=str,
+    default=None,
+    help="Use an HTTP(S) or SOCKS5 proxy, e.g. http://proxy:8080 or socks5://proxy:1080.",
+)
+@click.option(
+    "--no-proxy",
+    "no_proxy_opt",
+    is_flag=True,
+    default=False,
+    help="Disable proxy use, including proxy environment variables.",
+)
+@click.option(
     "--overwrite",
     "overwrite_opt",
     is_flag=True,
@@ -778,6 +800,8 @@ def cli(
     verbosity_opt: int,
     max_http_retries_opt: int,
     backoff_factor_opt: float,
+    proxy_opt: str | None,
+    no_proxy_opt: bool,
     overwrite_opt: bool,
     no_overwrite_opt: bool,
     ignore_existing_opt: bool,
@@ -799,9 +823,15 @@ def cli(
         )
 
     # Configure HTTP client with retry settings
+    if proxy_opt is not None and no_proxy_opt:
+        raise click.UsageError("Options --proxy and --no-proxy are mutually exclusive.")
     configure_client(
         retry_total=max_http_retries_opt,
         backoff_factor=backoff_factor_opt,
+        proxy=proxy_opt,
+        use_environment_proxy=proxy_opt is None and not no_proxy_opt,
+        disable_proxy=no_proxy_opt,
+        verbosity=verbosity_opt,
     )
 
     cont_opt = not start_fresh_opt
