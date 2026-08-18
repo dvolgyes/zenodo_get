@@ -7,6 +7,7 @@ automatic filename detection, and configurable verbosity.
 
 import atexit
 import re
+import os
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
@@ -37,7 +38,10 @@ def _create_retry_transport(
         max_backoff_wait=max_backoff_wait,
         respect_retry_after_header=respect_retry_after_header,
     )
-    return RetryTransport(retry=retry)
+    # return RetryTransport(retry=retry)
+    proxy = os.environ.get("HTTPS_PROXY") or os.environ.get("https_proxy")
+    transport = httpx.HTTPTransport(proxy=proxy)
+    return RetryTransport(transport=transport, retry=retry)
 
 
 def _close_client() -> None:
