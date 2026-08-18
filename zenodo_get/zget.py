@@ -6,22 +6,16 @@ files from Zenodo records, with features like checksum verification,
 retry logic, and flexible file filtering.
 """
 
-import hashlib
-import os
 import signal
 import sys
 import time
-from collections.abc import Callable, Iterator
-from contextlib import contextmanager
-from fnmatch import fnmatch
+from collections.abc import Callable
 from importlib.metadata import version
 from pathlib import Path
 from typing import Any
-from urllib.parse import unquote
 
 import click
 import httpx2
-import humanize
 from loguru import logger
 
 import zenodo_get as zget
@@ -32,23 +26,15 @@ from zenodo_get.downloader import (
     download_file,
     get_client,
 )
-
-# Existing file handling modes
-EXISTING_FILE_OVERWRITE = "overwrite"
-EXISTING_FILE_NO_OVERWRITE = "no_overwrite"
-EXISTING_FILE_IGNORE = "ignore"
-
-
-# see https://stackoverflow.com/questions/431684/how-do-i-change-the-working-directory-in-python/24176022#24176022
-@contextmanager
-def cd(newdir: str | Path) -> Iterator[None]:
-    """Temporarily change to a different directory, returning to original after."""
-    prevdir = Path.cwd()
-    os.chdir(Path(newdir).expanduser())
-    try:
-        yield
-    finally:
-        os.chdir(prevdir)
+from zenodo_get.file_download import (
+    EXISTING_FILE_IGNORE,
+    EXISTING_FILE_NO_OVERWRITE,
+    EXISTING_FILE_OVERWRITE,
+    check_hash,
+    handle_single_file_download,
+)
+from zenodo_get.metadata import fetch_record_metadata, filter_files_from_metadata
+from zenodo_get.workflow import run_download
 
 
 def ctrl_c(func: Callable[..., Any]) -> Callable[..., Any]:
@@ -75,23 +61,6 @@ def handle_ctrl_c(*args: object, **kwargs: object) -> None:
         sys.exit(1)
 
 
-def check_hash(filename: str, checksum: str) -> tuple[str, str]:
-    """Verify file integrity by comparing MD5 checksum against expected value."""
-    algorithm = "md5"
-    value = checksum.strip()
-    if not Path(filename).exists():
-        return value, "invalid"
-    h = hashlib.new(algorithm)
-    with Path(filename).open("rb") as f:
-        while True:
-            data = f.read(4096)
-            if not data:
-                break
-            h.update(data)
-    digest = h.hexdigest()
-    return value, digest
-
-
 def _fetch_record_metadata(
     record_id: str,
     sandbox: bool,
@@ -99,71 +68,22 @@ def _fetch_record_metadata(
     timeout_val: float,
     exceptions_on_failure: bool,
 ) -> dict[str, Any] | None:
-    """Fetches and returns the JSON metadata for a Zenodo record."""
-    api_url_base = (
-        "https://sandbox.zenodo.org/api/records/"
-        if sandbox
-        else "https://zenodo.org/api/records/"
+    """Fetch record metadata through the configured client."""
+    return fetch_record_metadata(
+        record_id,
+        sandbox,
+        access_token,
+        timeout_val,
+        exceptions_on_failure,
+        get_client=get_client,
     )
-
-    params = {}
-    if access_token:
-        params["access_token"] = access_token
-
-    try:
-        client = get_client()
-        r = client.get(api_url_base + record_id, params=params, timeout=timeout_val)
-        r.raise_for_status()
-        metadata = r.json()
-        if not isinstance(metadata, dict):
-            raise TypeError("Zenodo metadata response must be a JSON object")
-        return metadata
-    except httpx2.TimeoutException:
-        msg = f"Timeout when fetching metadata for record {record_id} from {api_url_base + record_id}"
-        logger.error(msg)
-        if exceptions_on_failure:
-            raise ConnectionError(msg)
-        sys.exit(1)
-    except httpx2.HTTPStatusError as e:
-        msg = f"HTTP error fetching metadata for record {record_id}: {e.response.status_code} - {e.response.reason_phrase} from {api_url_base + record_id}"
-        logger.error(msg)
-        if exceptions_on_failure:
-            raise ValueError(msg)
-        sys.exit(1)
-    except httpx2.RequestError as e:
-        msg = f"Error fetching metadata for record {record_id} from {api_url_base + record_id}: {e}"
-        logger.error(msg)
-        if exceptions_on_failure:
-            raise ConnectionError(msg)
-        sys.exit(1)
 
 
 def _filter_files_from_metadata(
     metadata_json: dict[str, Any], glob_str: tuple[str, ...], record_id: str
 ) -> list[dict[str, Any]]:
-    """Filters files from metadata based on glob patterns."""
-    files_in_metadata = metadata_json.get("files", [])
-    if not files_in_metadata:
-        logger.error(f"No files found in metadata for record {record_id}.")
-        return []
-
-    matched_files = []
-    for f_meta in files_in_metadata:
-        filename = f_meta.get("filename") or f_meta.get("key")
-        if filename:
-            if not glob_str or any(fnmatch(filename, pattern) for pattern in glob_str):
-                matched_files.append(f_meta)
-        else:
-            logger.warning(
-                f"Skipping file metadata entry due to missing filename/key: {f_meta.get('id', 'Unknown ID')}"
-            )
-
-    if not matched_files and glob_str:
-        logger.warning(
-            f"Files matching patterns '{glob_str}' not found in metadata for record {record_id}"
-        )
-
-    return matched_files
+    """Select record files through the metadata policy."""
+    return filter_files_from_metadata(metadata_json, glob_str, record_id)
 
 
 def _handle_single_file_download(
@@ -174,140 +94,33 @@ def _handle_single_file_download(
     cont_download: bool,
     retry_limit: int,
     pause_duration: float,
-    timeout_val: float,  # timeout_val is not directly used by wget.download, but good to have if we change download method
+    timeout_val: float,
     keep_invalid: bool,
     error_continues: bool,
     verbosity: int,
     exceptions_on_failure: bool,
     existing_file_mode: str = EXISTING_FILE_OVERWRITE,
 ) -> bool | str:
-    """Download one file with retry logic and checksum verification.
-
-    Handles the download and verification of a single file.
-    """
-    fname = file_info.get("filename") or file_info["key"]
-    # Prefer direct download link from metadata if available
-    link = file_info.get("links", {}).get("self")
-    if not link:  # Fallback if links.self is not present
-        link = f"{download_url_base}{record_id}/files/{fname}"
-
-    size = humanize.naturalsize(file_info.get("filesize") or file_info["size"])
-    checksum = file_info["checksum"].split(":")[-1]
-
-    # Level 4: log file details
-    if verbosity >= 4:
-        logger.info(f"File: {fname} ({size})")
-        logger.info(f"Link: {link}")
-
-    if cont_download:
-        remote_hash_val, local_hash_val = check_hash(fname, checksum)
-        if remote_hash_val == local_hash_val:
-            logger.info(f"{fname} is already downloaded correctly.")
-            return True
-
-        # Handle existing file with mismatched checksum
-        if local_hash_val != "invalid":  # File exists but wrong checksum
-            if existing_file_mode == EXISTING_FILE_NO_OVERWRITE:
-                if verbosity >= 2:
-                    logger.error(f"{fname} exists but not overwritten with new content")
-                return "skipped"
-            if existing_file_mode == EXISTING_FILE_IGNORE:
-                if verbosity >= 2:
-                    logger.warning(f"{fname} exists and ignored (not updating content)")
-                return True
-            # EXISTING_FILE_OVERWRITE (default)
-            if verbosity >= 2:
-                logger.warning(f"{fname} exists but overwriting with new content")
-                # Fall through to download
-
-    current_retry = 0
-    download_successful_flag = False
-    while current_retry <= retry_limit:
-        if abort_signal:
-            return False  # Check before attempting download
-        try:
-            unquoted_link = unquote(link)
-            download_target_url = (
-                f"{unquoted_link}?access_token={access_token}"
-                if access_token
-                else unquoted_link
-            )
-
-            Path(fname).parent.mkdir(parents=True, exist_ok=True)
-            wget_filename = download_file(
-                download_target_url,
-                out=fname,
-                verbosity=verbosity,
-                timeout=timeout_val,
-            )
-
-            if (
-                fname != wget_filename
-            ):  # Should ideally not happen if out=fname works as expected
-                logger.warning(
-                    f"Downloaded filename '{wget_filename}' differs from expected '{fname}'. Renaming."
-                )
-                Path(wget_filename).rename(fname)
-            download_successful_flag = True
-            break
-        except (
-            OSError,
-            ValueError,
-            RuntimeError,
-            httpx2.RequestError,
-            httpx2.HTTPStatusError,
-        ) as e_download:
-            logger.error(f"Download error for {fname}: {e_download}")
-            current_retry += 1
-            if current_retry <= retry_limit:
-                logger.info(f"Retrying ({current_retry}/{retry_limit})...")
-                time.sleep(pause_duration)
-            else:
-                logger.error(f"Too many errors for {fname}.")
-                if not error_continues:
-                    msg = f"Download aborted for {fname} after {retry_limit} retries."
-                    logger.error(msg)
-                    if exceptions_on_failure:
-                        raise RuntimeError(msg)
-                    sys.exit(1)
-                else:
-                    logger.warning(
-                        f"Skipping {fname} and continuing with the next file."
-                    )
-                    return (
-                        False  # Indicate failure for this file, but allow continuation
-                    )
-
-    if (
-        not download_successful_flag
-    ):  # Should only be reached if error_continues was true and all retries failed
-        return False
-
-    if verbosity >= 4:
-        logger.info("")  # Newline after download progress
-    h1, h2 = check_hash(fname, checksum)
-    if h1 == h2:
-        if verbosity >= 4:
-            logger.success(f"Checksum is correct for {fname}. ({h1})")
-        return True
-    logger.error(f"Checksum is INCORRECT for {fname}! (Expected: {h1} Got: {h2})")
-    if not keep_invalid:
-        if verbosity >= 4:
-            logger.info(f"File {fname} is deleted.")
-        try:
-            Path(fname).unlink()
-        except OSError as e_remove:
-            logger.error(f"Error deleting file {fname}: {e_remove}")
-    else:
-        logger.warning(f"File {fname} is NOT deleted!")
-
-    if not error_continues:
-        msg = f"Aborting due to checksum error for {fname}."
-        logger.error(msg)
-        if exceptions_on_failure:
-            raise RuntimeError(msg)
-        sys.exit(1)
-    return False  # Checksum failed, but error_continues is true
+    """Download one file through the file-transfer policy."""
+    return handle_single_file_download(
+        file_info=file_info,
+        record_id=record_id,
+        download_url_base=download_url_base,
+        access_token=access_token,
+        cont_download=cont_download,
+        retry_limit=retry_limit,
+        pause_duration=pause_duration,
+        timeout_val=timeout_val,
+        keep_invalid=keep_invalid,
+        error_continues=error_continues,
+        verbosity=verbosity,
+        exceptions_on_failure=exceptions_on_failure,
+        existing_file_mode=existing_file_mode,
+        abort_requested=lambda: abort_signal,
+        download_file_func=download_file,
+        check_hash_func=check_hash,
+        sleep_func=time.sleep,
+    )
 
 
 def _zenodo_download_logic(
@@ -329,178 +142,32 @@ def _zenodo_download_logic(
     exceptions_on_failure: bool,
     existing_file_mode: str = EXISTING_FILE_OVERWRITE,
 ) -> None:
-    """Orchestrate the complete download workflow for a Zenodo record."""
-    outdir_opt.mkdir(parents=True, exist_ok=True)
-
-    if verbosity >= 1:
-        logger.info(f"Output directory: {outdir_opt.resolve()}")
-
-    with cd(outdir_opt):
-        recordID_to_fetch = actual_record
-        if actual_doi is not None:
-            doi_url = (
-                actual_doi
-                if actual_doi.startswith("http")
-                else "https://doi.org/" + actual_doi
-            )
-            try:
-                client = get_client()
-                r_doi = client.get(doi_url, timeout=timeout_val_opt)
-                r_doi.raise_for_status()
-                recordID_to_fetch = str(r_doi.url).split("/")[-1]
-            except httpx2.TimeoutException:
-                msg = f"Timeout resolving DOI: {doi_url}"
-                logger.error(msg)
-                if exceptions_on_failure:
-                    raise ConnectionError(msg)
-                sys.exit(1)
-            except httpx2.HTTPStatusError as e:
-                msg = f"HTTP error resolving DOI {doi_url}: {e.response.status_code} - {e.response.reason_phrase}"
-                logger.error(msg)
-                if exceptions_on_failure:
-                    raise ValueError(msg)
-                sys.exit(1)
-            except httpx2.RequestError as e:
-                msg = f"Error resolving DOI {doi_url}: {e}"
-                logger.error(msg)
-                if exceptions_on_failure:
-                    raise ConnectionError(msg)
-                sys.exit(1)
-
-        if recordID_to_fetch is None:
-            msg = "No record ID or DOI specified."
-            logger.error(msg)
-            if exceptions_on_failure:
-                raise ValueError(msg)
-            sys.exit(1)
-
-        recordID_to_fetch = recordID_to_fetch.strip()
-
-        metadata = _fetch_record_metadata(
-            recordID_to_fetch,
-            sandbox_opt,
-            access_token_opt,
-            timeout_val_opt,
-            exceptions_on_failure,
-        )
-        if not metadata:
-            return  # Error handled by _fetch_record_metadata
-
-        files_to_download = _filter_files_from_metadata(
-            metadata, glob_str_opt, recordID_to_fetch
-        )
-
-        download_url_base = (
-            "https://sandbox.zenodo.org/records/"
-            if sandbox_opt
-            else "https://zenodo.org/records/"
-        )
-
-        if md5_opt:
-            with Path("md5sums.txt").open("w") as md5file_handle:
-                for f_info in files_to_download:
-                    fname = f_info.get("filename") or f_info["key"]
-                    checksum = f_info["checksum"].split(":")[-1]
-                    md5file_handle.write(f"{checksum}  {fname}\n")
-            logger.info("md5sums.txt created.")
-            return  # md5_opt implies no download
-
-        if wget_file_opt:
-            if wget_file_opt == "-":
-                for f_info in files_to_download:
-                    fname = f_info.get("filename") or f_info["key"]
-                    link = (
-                        f_info.get("links", {}).get("self")
-                        or f"{download_url_base}{recordID_to_fetch}/files/{fname}"
-                    )
-                    sys.stdout.write(link + "\n")
-            else:
-                with Path(wget_file_opt).open("w") as output_file:
-                    for f_info in files_to_download:
-                        fname = f_info.get("filename") or f_info["key"]
-                        link = (
-                            f_info.get("links", {}).get("self")
-                            or f"{download_url_base}{recordID_to_fetch}/files/{fname}"
-                        )
-                        output_file.write(link + "\n")
-            logger.info(
-                f"URL list written to {'stdout' if wget_file_opt == '-' else wget_file_opt}."
-            )
-            return  # wget_file_opt implies no download
-
-        # Proceed with actual download
-        # Level 1+: record title and total size
-        if verbosity >= 1:
-            logger.info(f"Title: {metadata['metadata']['title']}")
-        # Level 4: additional metadata
-        if verbosity >= 4:
-            logger.info(
-                f"Keywords: {', '.join(metadata['metadata'].get('keywords', []))}"
-            )
-            logger.info(f"Publication date: {metadata['metadata']['publication_date']}")
-            logger.info(f"DOI: {metadata['metadata']['doi']}")
-        total_size_val = sum(
-            (f.get("filesize") or f.get("size", 0)) for f in files_to_download
-        )
-        if verbosity >= 1:
-            logger.info(f"Total size: {humanize.naturalsize(total_size_val)}")
-            logger.info(f"Number of files: {len(files_to_download)}")
-
-        # Level 2+: overall progress bar
-        from collections.abc import Iterable
-
-        from tqdm import tqdm
-
-        file_iterator: Iterable[tuple[int, dict[str, Any]]]
-        if verbosity >= 2:
-            file_iterator = tqdm(
-                enumerate(files_to_download),
-                total=len(files_to_download),
-                desc="Files",
-                leave=False,
-                unit="file",
-            )
-        else:
-            file_iterator = enumerate(files_to_download)
-
-        skipped_count = 0
-        for i, file_info_item in file_iterator:
-            if abort_signal:
-                logger.warning(
-                    "Download aborted with CTRL+C. Partially downloaded files may exist."
-                )
-                break
-
-            if verbosity >= 4:
-                logger.info(f"\nDownloading ({i + 1}/{len(files_to_download)}):")
-            result = _handle_single_file_download(
-                file_info=file_info_item,
-                record_id=recordID_to_fetch,
-                download_url_base=download_url_base,
-                access_token=access_token_opt,
-                cont_download=cont_opt,
-                retry_limit=retry_opt,
-                pause_duration=pause_opt,
-                timeout_val=timeout_val_opt,
-                keep_invalid=keep_opt,
-                error_continues=continue_on_error_opt,
-                verbosity=verbosity,
-                exceptions_on_failure=exceptions_on_failure,
-                existing_file_mode=existing_file_mode,
-            )
-            if result == "skipped":
-                skipped_count += 1
-        else:  # After for loop, if not broken by abort_signal
-            if not abort_signal and verbosity >= 1:
-                logger.success("All specified files have been processed.")
-
-        # Handle no_overwrite mode: exit with error if files were skipped
-        if skipped_count > 0 and existing_file_mode == EXISTING_FILE_NO_OVERWRITE:
-            msg = f"{skipped_count} file(s) exist with mismatched checksums and were not overwritten."
-            logger.error(msg)
-            if exceptions_on_failure:
-                raise RuntimeError(msg)
-            sys.exit(1)
+    """Run the record workflow through its policy modules."""
+    run_download(
+        actual_record=actual_record,
+        actual_doi=actual_doi,
+        md5_opt=md5_opt,
+        wget_file_opt=wget_file_opt,
+        continue_on_error_opt=continue_on_error_opt,
+        keep_opt=keep_opt,
+        cont_opt=cont_opt,
+        retry_opt=retry_opt,
+        pause_opt=pause_opt,
+        timeout_val_opt=timeout_val_opt,
+        outdir_opt=outdir_opt,
+        sandbox_opt=sandbox_opt,
+        access_token_opt=access_token_opt,
+        glob_str_opt=glob_str_opt,
+        verbosity=verbosity,
+        exceptions_on_failure=exceptions_on_failure,
+        existing_file_mode=existing_file_mode,
+        no_overwrite_mode=EXISTING_FILE_NO_OVERWRITE,
+        fetch_metadata=_fetch_record_metadata,
+        filter_files=_filter_files_from_metadata,
+        handle_file=_handle_single_file_download,
+        get_client=get_client,
+        abort_requested=lambda: abort_signal,
+    )
 
 
 def download(  # Public API function
