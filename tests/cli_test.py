@@ -1,14 +1,14 @@
-#!/usr/bin/env python3
 """
 Comprehensive CLI testing for zenodo_get.
 Tests all CLI options, error cases, and integration scenarios.
 """
 
 import os
+import subprocess
 import sys
 import tempfile
-import subprocess
 from pathlib import Path
+
 import pytest
 from click.testing import CliRunner
 
@@ -385,6 +385,7 @@ def test_cli_coverage_via_subprocess():
     result = subprocess.run(
         [sys.executable, "-m", "zenodo_get", "--version"],
         capture_output=True,
+        check=False,
         text=True,
         cwd=project_root,
     )
@@ -396,6 +397,7 @@ def test_cli_coverage_via_subprocess():
     result = subprocess.run(
         [sys.executable, "-m", "zenodo_get", "-h"],
         capture_output=True,
+        check=False,
         text=True,
         cwd=project_root,
     )

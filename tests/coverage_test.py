@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Comprehensive tests to improve code coverage for zenodo_get.
 Tests focus on poorly covered functions:
@@ -11,9 +10,11 @@ Tests focus on poorly covered functions:
 import os
 import sys
 import tempfile
-import unittest.mock as mock
+from contextlib import suppress
 from pathlib import Path
-import httpxyz as httpx
+from unittest import mock
+
+import httpx2
 import pytest
 
 # Add parent directory to path for imports
@@ -21,9 +22,9 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")
 
 from zenodo_get.zget import (
     _fetch_record_metadata,
+    _handle_single_file_download,
     download,
     handle_ctrl_c,
-    _handle_single_file_download,
 )
 
 
@@ -40,12 +41,9 @@ class TestFetchRecordMetadata:
     def test_sandbox_fetch(self):
         """Test fetch from sandbox environment."""
         # Use a smaller record that might exist in sandbox
-        try:
-            result = _fetch_record_metadata("1", True, None, 30.0, True)
+        with suppress(ValueError, ConnectionError):
+            _fetch_record_metadata("1", True, None, 30.0, True)
             # Sandbox might not have this record, so we expect an exception
-        except (ValueError, ConnectionError):
-            # This is expected for non-existent sandbox records
-            pass
 
     def test_fetch_with_access_token(self):
         """Test fetch with access token parameter."""
@@ -55,7 +53,7 @@ class TestFetchRecordMetadata:
     def test_fetch_timeout_exception(self):
         """Test timeout handling with exceptions enabled."""
         mock_client = mock.Mock()
-        mock_client.get.side_effect = httpx.TimeoutException("Timeout error")
+        mock_client.get.side_effect = httpx2.TimeoutException("Timeout error")
 
         with mock.patch("zenodo_get.zget.get_client", return_value=mock_client):
             with pytest.raises(ConnectionError, match="Timeout when fetching"):
@@ -64,7 +62,7 @@ class TestFetchRecordMetadata:
     def test_fetch_timeout_no_exception(self):
         """Test timeout handling with exceptions disabled."""
         mock_client = mock.Mock()
-        mock_client.get.side_effect = httpx.TimeoutException("Timeout error")
+        mock_client.get.side_effect = httpx2.TimeoutException("Timeout error")
 
         with mock.patch("zenodo_get.zget.get_client", return_value=mock_client):
             with mock.patch("sys.exit") as mock_exit:
@@ -77,7 +75,7 @@ class TestFetchRecordMetadata:
         mock_response = mock.Mock()
         mock_response.status_code = 404
         mock_response.reason_phrase = "Not Found"
-        mock_client.get.side_effect = httpx.HTTPStatusError(
+        mock_client.get.side_effect = httpx2.HTTPStatusError(
             "404 Not Found", request=mock.Mock(), response=mock_response
         )
 
@@ -91,7 +89,7 @@ class TestFetchRecordMetadata:
         mock_response = mock.Mock()
         mock_response.status_code = 404
         mock_response.reason_phrase = "Not Found"
-        mock_client.get.side_effect = httpx.HTTPStatusError(
+        mock_client.get.side_effect = httpx2.HTTPStatusError(
             "404 Not Found", request=mock.Mock(), response=mock_response
         )
 
@@ -103,7 +101,7 @@ class TestFetchRecordMetadata:
     def test_fetch_request_exception_exception(self):
         """Test general request exception handling with exceptions enabled."""
         mock_client = mock.Mock()
-        mock_client.get.side_effect = httpx.RequestError("Connection failed")
+        mock_client.get.side_effect = httpx2.RequestError("Connection failed")
 
         with mock.patch("zenodo_get.zget.get_client", return_value=mock_client):
             with pytest.raises(ConnectionError, match="Error fetching metadata"):
@@ -112,7 +110,7 @@ class TestFetchRecordMetadata:
     def test_fetch_request_exception_no_exception(self):
         """Test general request exception handling with exceptions disabled."""
         mock_client = mock.Mock()
-        mock_client.get.side_effect = httpx.RequestError("Connection failed")
+        mock_client.get.side_effect = httpx2.RequestError("Connection failed")
 
         with mock.patch("zenodo_get.zget.get_client", return_value=mock_client):
             with mock.patch("sys.exit") as mock_exit:
@@ -147,7 +145,7 @@ class TestDownloadFunction:
                 exceptions_on_failure=True,
             )
             # Should create md5sums.txt
-            assert os.path.exists(os.path.join(temp_dir, "md5sums.txt"))
+            assert Path(os.path.join(temp_dir, "md5sums.txt")).exists()
 
     def test_download_with_record_string(self):
         """Test download with string record ID."""
@@ -158,7 +156,7 @@ class TestDownloadFunction:
                 md5=True,
                 exceptions_on_failure=True,
             )
-            assert os.path.exists(os.path.join(temp_dir, "md5sums.txt"))
+            assert Path(os.path.join(temp_dir, "md5sums.txt")).exists()
 
     def test_download_with_doi_string(self):
         """Test download with DOI string."""
@@ -169,7 +167,7 @@ class TestDownloadFunction:
                 md5=True,
                 exceptions_on_failure=True,
             )
-            assert os.path.exists(os.path.join(temp_dir, "md5sums.txt"))
+            assert Path(os.path.join(temp_dir, "md5sums.txt")).exists()
 
     def test_download_explicit_record_parameter(self):
         """Test download with explicit record parameter."""
@@ -180,7 +178,7 @@ class TestDownloadFunction:
                 md5=True,
                 exceptions_on_failure=True,
             )
-            assert os.path.exists(os.path.join(temp_dir, "md5sums.txt"))
+            assert Path(os.path.join(temp_dir, "md5sums.txt")).exists()
 
     def test_download_explicit_doi_parameter(self):
         """Test download with explicit DOI parameter."""
@@ -191,7 +189,7 @@ class TestDownloadFunction:
                 md5=True,
                 exceptions_on_failure=True,
             )
-            assert os.path.exists(os.path.join(temp_dir, "md5sums.txt"))
+            assert Path(os.path.join(temp_dir, "md5sums.txt")).exists()
 
     def test_download_with_path_object(self):
         """Test download with Path object as output_dir."""
@@ -203,7 +201,7 @@ class TestDownloadFunction:
                 md5=True,
                 exceptions_on_failure=True,
             )
-            assert os.path.exists(path_obj / "md5sums.txt")
+            assert (path_obj / "md5sums.txt").exists()
 
     def test_download_wget_file_mode(self):
         """Test download in wget file mode."""
@@ -215,7 +213,7 @@ class TestDownloadFunction:
                 wget_file=wget_file,
                 exceptions_on_failure=True,
             )
-            assert os.path.exists(wget_file)
+            assert Path(wget_file).exists()
             with open(wget_file) as f:
                 content = f.read()
                 assert "zenodo.org" in content
@@ -254,7 +252,7 @@ class TestHandleCtrlC:
             zget_module.abort_counter = 0
 
             handle_ctrl_c()
-            assert zget_module.abort_signal == True
+            assert zget_module.abort_signal
             assert zget_module.abort_counter == 1
         finally:
             zget_module.abort_signal = original_abort_signal
@@ -275,7 +273,7 @@ class TestHandleCtrlC:
                 handle_ctrl_c()
                 mock_exit.assert_called_once_with(1)
 
-            assert zget_module.abort_signal == True
+            assert zget_module.abort_signal
             assert zget_module.abort_counter == 2
         finally:
             zget_module.abort_signal = original_abort_signal
@@ -293,13 +291,12 @@ class TestHandleSingleFileDownload:
             "checksum": "md5:d41d8cd98f00b204e9800998ecf8427e",  # Empty file hash
         }
 
-        original_cwd = os.getcwd()
+        original_cwd = Path.cwd()
         with tempfile.TemporaryDirectory() as temp_dir:
             try:
                 os.chdir(temp_dir)
                 # Create empty file
-                with open("test_file.txt", "w") as f:
-                    pass
+                Path("test_file.txt").touch()
 
                 result = _handle_single_file_download(
                     file_info=file_info,
@@ -360,16 +357,16 @@ class TestHandleSingleFileDownload:
             "links": {"self": "https://test.com/file"},
         }
 
-        original_cwd = os.getcwd()
+        original_cwd = Path.cwd()
         with tempfile.TemporaryDirectory() as temp_dir:
             try:
                 os.chdir(temp_dir)
 
                 with mock.patch("zenodo_get.zget.download_file") as mock_download:
-                    mock_download.side_effect = Exception("Download failed")
+                    mock_download.side_effect = httpx2.RequestError("Download failed")
 
                     with mock.patch("sys.exit"):
-                        result = _handle_single_file_download(
+                        _handle_single_file_download(
                             file_info=file_info,
                             record_id="test",
                             download_url_base="https://test.com/",
@@ -398,17 +395,17 @@ class TestHandleSingleFileDownload:
             "checksum": "md5:fakehash",
         }
 
-        original_cwd = os.getcwd()
+        original_cwd = Path.cwd()
         with tempfile.TemporaryDirectory() as temp_dir:
             try:
                 os.chdir(temp_dir)
 
                 with mock.patch("zenodo_get.zget.download_file") as mock_download:
-                    mock_download.side_effect = Exception("Download failed")
+                    mock_download.side_effect = httpx2.RequestError("Download failed")
 
                     with mock.patch("time.sleep") as mock_sleep:
                         with mock.patch("sys.exit"):
-                            result = _handle_single_file_download(
+                            _handle_single_file_download(
                                 file_info=file_info,
                                 record_id="test",
                                 download_url_base="https://test.com/",
@@ -437,13 +434,13 @@ class TestHandleSingleFileDownload:
             "checksum": "md5:fakehash",
         }
 
-        original_cwd = os.getcwd()
+        original_cwd = Path.cwd()
         with tempfile.TemporaryDirectory() as temp_dir:
             try:
                 os.chdir(temp_dir)
 
                 with mock.patch("zenodo_get.zget.download_file") as mock_download:
-                    mock_download.side_effect = Exception("Download failed")
+                    mock_download.side_effect = httpx2.RequestError("Download failed")
 
                     result = _handle_single_file_download(
                         file_info=file_info,
@@ -472,14 +469,13 @@ class TestHandleSingleFileDownload:
             "checksum": "md5:wronghash",
         }
 
-        original_cwd = os.getcwd()
+        original_cwd = Path.cwd()
         with tempfile.TemporaryDirectory() as temp_dir:
             try:
                 os.chdir(temp_dir)
 
                 # Create a file with different content
-                with open("test_file.txt", "w") as f:
-                    f.write("test content")
+                Path("test_file.txt").write_text("test content")
 
                 with mock.patch("zenodo_get.zget.download_file") as mock_download:
                     mock_download.return_value = "test_file.txt"
@@ -500,7 +496,7 @@ class TestHandleSingleFileDownload:
                     )
 
                     assert result == False  # Checksum failed
-                    assert not os.path.exists("test_file.txt")  # File deleted
+                    assert not Path("test_file.txt").exists()  # File deleted
             finally:
                 os.chdir(original_cwd)
 
@@ -512,14 +508,13 @@ class TestHandleSingleFileDownload:
             "checksum": "md5:wronghash",
         }
 
-        original_cwd = os.getcwd()
+        original_cwd = Path.cwd()
         with tempfile.TemporaryDirectory() as temp_dir:
             try:
                 os.chdir(temp_dir)
 
                 # Create a file with different content
-                with open("test_file.txt", "w") as f:
-                    f.write("test content")
+                Path("test_file.txt").write_text("test content")
 
                 with mock.patch("zenodo_get.zget.download_file") as mock_download:
                     mock_download.return_value = "test_file.txt"
@@ -540,7 +535,7 @@ class TestHandleSingleFileDownload:
                     )
 
                     assert result == False  # Checksum failed
-                    assert os.path.exists("test_file.txt")  # File kept
+                    assert Path("test_file.txt").exists()  # File kept
             finally:
                 os.chdir(original_cwd)
 

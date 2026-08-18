@@ -92,7 +92,7 @@ def test_api_error_handling() -> None:
         print(
             f"API Test: Error handling - Caught unexpected exception: {type(e).__name__} - {e}"
         )
-        pass  # Not the expected exception
+        # Not the expected exception
 
     assert raised_expected_exception, (
         "Expected ValueError or ConnectionError was not raised for invalid DOI."

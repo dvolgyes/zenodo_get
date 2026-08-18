@@ -1,36 +1,36 @@
 #!/usr/bin/env python3
-"""
-Download and manage files from Zenodo research data repository.
+"""Download and manage files from Zenodo research data repository.
 
 This module provides both CLI and programmatic interfaces for downloading
 files from Zenodo records, with features like checksum verification,
 retry logic, and flexible file filtering.
 """
 
-from contextlib import contextmanager
-from fnmatch import fnmatch
 import hashlib
-from importlib.metadata import version
 import os
-from pathlib import Path
 import signal
 import sys
 import time
-from typing import Any
 from collections.abc import Callable, Iterator
+from contextlib import contextmanager
+from fnmatch import fnmatch
+from importlib.metadata import version
+from pathlib import Path
+from typing import Any
 from urllib.parse import unquote
 
 import click
+import httpx2
 import humanize
-import httpxyz as httpx
 from loguru import logger
+
 import zenodo_get as zget
 from zenodo_get.downloader import (
+    DEFAULT_BACKOFF_FACTOR,
+    DEFAULT_RETRY_TOTAL,
     configure_client,
     download_file,
     get_client,
-    DEFAULT_BACKOFF_FACTOR,
-    DEFAULT_RETRY_TOTAL,
 )
 
 # Existing file handling modes
@@ -114,20 +114,23 @@ def _fetch_record_metadata(
         client = get_client()
         r = client.get(api_url_base + record_id, params=params, timeout=timeout_val)
         r.raise_for_status()
-        return r.json()
-    except httpx.TimeoutException:
+        metadata = r.json()
+        if not isinstance(metadata, dict):
+            raise TypeError("Zenodo metadata response must be a JSON object")
+        return metadata
+    except httpx2.TimeoutException:
         msg = f"Timeout when fetching metadata for record {record_id} from {api_url_base + record_id}"
         logger.error(msg)
         if exceptions_on_failure:
             raise ConnectionError(msg)
         sys.exit(1)
-    except httpx.HTTPStatusError as e:
+    except httpx2.HTTPStatusError as e:
         msg = f"HTTP error fetching metadata for record {record_id}: {e.response.status_code} - {e.response.reason_phrase} from {api_url_base + record_id}"
         logger.error(msg)
         if exceptions_on_failure:
             raise ValueError(msg)
         sys.exit(1)
-    except httpx.RequestError as e:
+    except httpx2.RequestError as e:
         msg = f"Error fetching metadata for record {record_id} from {api_url_base + record_id}: {e}"
         logger.error(msg)
         if exceptions_on_failure:
@@ -178,8 +181,7 @@ def _handle_single_file_download(
     exceptions_on_failure: bool,
     existing_file_mode: str = EXISTING_FILE_OVERWRITE,
 ) -> bool | str:
-    """
-    Download one file with retry logic and checksum verification.
+    """Download one file with retry logic and checksum verification.
 
     Handles the download and verification of a single file.
     """
@@ -248,7 +250,13 @@ def _handle_single_file_download(
                 Path(wget_filename).rename(fname)
             download_successful_flag = True
             break
-        except Exception as e_download:
+        except (
+            OSError,
+            ValueError,
+            RuntimeError,
+            httpx2.RequestError,
+            httpx2.HTTPStatusError,
+        ) as e_download:
             logger.error(f"Download error for {fname}: {e_download}")
             current_retry += 1
             if current_retry <= retry_limit:
@@ -260,7 +268,7 @@ def _handle_single_file_download(
                     msg = f"Download aborted for {fname} after {retry_limit} retries."
                     logger.error(msg)
                     if exceptions_on_failure:
-                        raise Exception(msg)
+                        raise RuntimeError(msg)
                     sys.exit(1)
                 else:
                     logger.warning(
@@ -297,7 +305,7 @@ def _handle_single_file_download(
         msg = f"Aborting due to checksum error for {fname}."
         logger.error(msg)
         if exceptions_on_failure:
-            raise Exception(msg)
+            raise RuntimeError(msg)
         sys.exit(1)
     return False  # Checksum failed, but error_continues is true
 
@@ -340,19 +348,19 @@ def _zenodo_download_logic(
                 r_doi = client.get(doi_url, timeout=timeout_val_opt)
                 r_doi.raise_for_status()
                 recordID_to_fetch = str(r_doi.url).split("/")[-1]
-            except httpx.TimeoutException:
+            except httpx2.TimeoutException:
                 msg = f"Timeout resolving DOI: {doi_url}"
                 logger.error(msg)
                 if exceptions_on_failure:
                     raise ConnectionError(msg)
                 sys.exit(1)
-            except httpx.HTTPStatusError as e:
+            except httpx2.HTTPStatusError as e:
                 msg = f"HTTP error resolving DOI {doi_url}: {e.response.status_code} - {e.response.reason_phrase}"
                 logger.error(msg)
                 if exceptions_on_failure:
                     raise ValueError(msg)
                 sys.exit(1)
-            except httpx.RequestError as e:
+            except httpx2.RequestError as e:
                 msg = f"Error resolving DOI {doi_url}: {e}"
                 logger.error(msg)
                 if exceptions_on_failure:
@@ -491,7 +499,7 @@ def _zenodo_download_logic(
             msg = f"{skipped_count} file(s) exist with mismatched checksums and were not overwritten."
             logger.error(msg)
             if exceptions_on_failure:
-                raise Exception(msg)
+                raise RuntimeError(msg)
             sys.exit(1)
 
 
@@ -517,8 +525,7 @@ def download(  # Public API function
     backoff_factor: float = DEFAULT_BACKOFF_FACTOR,
     existing_file_mode: str = "overwrite",
 ) -> None:
-    """
-    Download files from a Zenodo record programmatically.
+    """Download files from a Zenodo record programmatically.
 
     Public API function for downloading Zenodo records.
 
@@ -775,8 +782,7 @@ def cli(
     no_overwrite_opt: bool,
     ignore_existing_opt: bool,
 ) -> None:
-    """
-    Command-line interface for downloading files from Zenodo records.
+    """Command-line interface for downloading files from Zenodo records.
 
     CLI mode - uses signal handling and can exit directly.
     """
@@ -858,7 +864,14 @@ def cli(
             existing_file_mode=existing_file_mode,
         )
     except (
-        Exception
-    ) as e:  # Catch-all for unexpected errors from _zenodo_download_logic
+        ConnectionError,
+        OSError,
+        RuntimeError,
+        TypeError,
+        ValueError,
+        KeyError,
+        httpx2.RequestError,
+        httpx2.HTTPStatusError,
+    ) as e:
         logger.error(f"An unexpected error occurred in download logic: {e}")
         sys.exit(1)

@@ -1,22 +1,22 @@
-"""
-HTTP file download utilities using httpx.
+"""HTTP file download utilities using httpx2.
 
-Provides a replacement for wget.download() with httpx-based streaming downloads,
+Provides a replacement for wget.download() with httpx2-based streaming downloads,
 automatic filename detection, and configurable verbosity.
 """
 
 import atexit
-import re
 import os
+import re
+import time
+from email.utils import parsedate_to_datetime
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
-import httpxyz as httpx
-from httpx_retries import RetryTransport, Retry
+import httpx2
 from loguru import logger
 
 # Module-level client and configuration defaults
-_client: httpx.Client | None = None
+_client: httpx2.Client | None = None
 
 # Default retry configuration
 DEFAULT_RETRY_TOTAL = 5
@@ -25,23 +25,91 @@ DEFAULT_MAX_BACKOFF_WAIT = 120.0
 DEFAULT_RESPECT_RETRY_AFTER_HEADER = True
 
 
+class _RetryTransport(httpx2.BaseTransport):  # type: ignore[misc]
+    """Retry selected HTTP requests using an httpx2 transport."""
+
+    def __init__(
+        self,
+        transport: httpx2.BaseTransport,
+        retry_total: int,
+        backoff_factor: float,
+        max_backoff_wait: float,
+        respect_retry_after_header: bool,
+    ) -> None:
+        self._transport = transport
+        self._retry_total = retry_total
+        self._backoff_factor = backoff_factor
+        self._max_backoff_wait = max_backoff_wait
+        self._respect_retry_after_header = respect_retry_after_header
+
+    def close(self) -> None:
+        """Close the wrapped transport."""
+        self._transport.close()
+
+    def handle_request(self, request: httpx2.Request) -> httpx2.Response:
+        """Send a request, retrying transient network and HTTP failures."""
+        retryable_methods = {"GET", "HEAD", "PUT", "DELETE", "OPTIONS", "TRACE"}
+        retryable_statuses = {429, 502, 503, 504}
+        response: httpx2.Response | None = None
+
+        for attempt in range(self._retry_total + 1):
+            if response is not None:
+                response.close()
+
+            try:
+                response = self._transport.handle_request(request)
+            except httpx2.RequestError:
+                if (
+                    request.method not in retryable_methods
+                    or attempt >= self._retry_total
+                ):
+                    raise
+                self._sleep(attempt)
+                continue
+
+            if (
+                request.method not in retryable_methods
+                or response.status_code not in retryable_statuses
+                or attempt >= self._retry_total
+            ):
+                return response
+
+            self._sleep(attempt, response)
+
+        if response is None:
+            raise RuntimeError("Retry transport completed without a response")
+        return response
+
+    def _sleep(self, attempt: int, response: httpx2.Response | None = None) -> None:
+        """Wait before a retry, honoring Retry-After when configured."""
+        delay = self._backoff_factor * (2**attempt)
+        if self._respect_retry_after_header and response is not None:
+            retry_after = response.headers.get("retry-after")
+            if retry_after:
+                try:
+                    delay = float(retry_after)
+                except ValueError:
+                    retry_at = parsedate_to_datetime(retry_after).timestamp()
+                    delay = max(0.0, retry_at - time.time())
+        time.sleep(min(self._max_backoff_wait, delay))
+
+
 def _create_retry_transport(
     retry_total: int = DEFAULT_RETRY_TOTAL,
     backoff_factor: float = DEFAULT_BACKOFF_FACTOR,
     max_backoff_wait: float = DEFAULT_MAX_BACKOFF_WAIT,
     respect_retry_after_header: bool = DEFAULT_RESPECT_RETRY_AFTER_HEADER,
-) -> RetryTransport:
+) -> _RetryTransport:
     """Create a retry transport with the specified configuration."""
-    retry = Retry(
-        total=retry_total,
+    proxy = os.environ.get("HTTPS_PROXY") or os.environ.get("https_proxy")
+    transport = httpx2.HTTPTransport(proxy=proxy)
+    return _RetryTransport(
+        transport=transport,
+        retry_total=retry_total,
         backoff_factor=backoff_factor,
         max_backoff_wait=max_backoff_wait,
         respect_retry_after_header=respect_retry_after_header,
     )
-    # return RetryTransport(retry=retry)
-    proxy = os.environ.get("HTTPS_PROXY") or os.environ.get("https_proxy")
-    transport = httpx.HTTPTransport(proxy=proxy)
-    return RetryTransport(transport=transport, retry=retry)
 
 
 def _close_client() -> None:
@@ -52,16 +120,15 @@ def _close_client() -> None:
         _client = None
 
 
-def get_client() -> httpx.Client:
-    """
-    Get the module-level HTTP client.
+def get_client() -> httpx2.Client:
+    """Get the module-level HTTP client.
 
     Creates a new client with default retry settings if none exists.
     """
     global _client
     if _client is None:
         transport = _create_retry_transport()
-        _client = httpx.Client(follow_redirects=True, transport=transport)
+        _client = httpx2.Client(follow_redirects=True, transport=transport)
         atexit.register(_close_client)
     return _client
 
@@ -72,8 +139,7 @@ def configure_client(
     max_backoff_wait: float = DEFAULT_MAX_BACKOFF_WAIT,
     respect_retry_after_header: bool = DEFAULT_RESPECT_RETRY_AFTER_HEADER,
 ) -> None:
-    """
-    Configure the module-level client with specified retry settings.
+    """Configure the module-level client with specified retry settings.
 
     Closes any existing client and creates a new one with the given settings.
     """
@@ -85,7 +151,7 @@ def configure_client(
         max_backoff_wait=max_backoff_wait,
         respect_retry_after_header=respect_retry_after_header,
     )
-    _client = httpx.Client(follow_redirects=True, transport=transport)
+    _client = httpx2.Client(follow_redirects=True, transport=transport)
     atexit.register(_close_client)
 
 
@@ -94,9 +160,8 @@ def create_configured_client(
     backoff_factor: float = DEFAULT_BACKOFF_FACTOR,
     max_backoff_wait: float = DEFAULT_MAX_BACKOFF_WAIT,
     respect_retry_after_header: bool = DEFAULT_RESPECT_RETRY_AFTER_HEADER,
-) -> httpx.Client:
-    """
-    Create an independent HTTP client with specified retry settings.
+) -> httpx2.Client:
+    """Create an independent HTTP client with specified retry settings.
 
     The caller is responsible for closing this client.
     """
@@ -106,12 +171,11 @@ def create_configured_client(
         max_backoff_wait=max_backoff_wait,
         respect_retry_after_header=respect_retry_after_header,
     )
-    return httpx.Client(follow_redirects=True, transport=transport)
+    return httpx2.Client(follow_redirects=True, transport=transport)
 
 
 def _extract_filename_from_content_disposition(header: str | None) -> str | None:
-    """
-    Extract filename from Content-Disposition header.
+    """Extract filename from Content-Disposition header.
 
     Handles quoted, unquoted, and RFC 5987 encoded filenames.
     """
@@ -156,8 +220,7 @@ def download_file(
     timeout: float = 30.0,
     chunk_size: int = 8192,
 ) -> str:
-    """
-    Download a file from URL using httpx with streaming.
+    """Download a file from URL using httpx2 with streaming.
 
     Args:
         url: The URL to download from.
@@ -172,9 +235,9 @@ def download_file(
         The actual filename where the file was saved.
 
     Raises:
-        httpx.TimeoutException: If the connection times out.
-        httpx.HTTPStatusError: If the server returns an error status.
-        httpx.RequestError: If a request error occurs.
+        httpx2.TimeoutException: If the connection times out.
+        httpx2.HTTPStatusError: If the server returns an error status.
+        httpx2.RequestError: If a request error occurs.
         ValueError: If no filename can be determined.
 
     """

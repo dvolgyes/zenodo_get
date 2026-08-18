@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python -m pytest tests/test_coverage.py -xvs)",
+      "Bash(uv sync:*)",
+      "Bash(uv run pytest:*)",
+      "Bash(gh issue view:*)",
+      "Bash(curl:*)"
+    ],
+    "deny": []
+  }
+}

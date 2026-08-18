@@ -1,11 +1,10 @@
-#!/usr/bin/env python3
-"""
-Zenodo_get - Download complete records from the Zenodo research data repository.
+"""Zenodo_get - Download complete records from the Zenodo research data repository.
 
 Provides easy programmatic and command-line access to download files
 from Zenodo records using record IDs or DOIs.
 """
 
+from contextlib import suppress
 from importlib.metadata import version
 
 __title__ = "zenodo_get"
@@ -45,13 +44,7 @@ Zenodo. https://doi.org/"""
     + __doi__
 )
 
-try:  # wget and other libs might not be present at installation
+with suppress(ImportError):  # wget and other libs might not be present at installation
     from .zget import download  # Updated to import the new public API function
 
     __all__ = ["download"]  # Updated to export the new public API function
-except ImportError:  # More specific exception handling
-    # This can happen during initial package build where zget might not be compiled/available yet
-    # Or if a user tries to import without all dependencies installed for some reason.
-    # Allow the import to proceed without 'download' if it's not found,
-    # as other metadata in __init__ might still be useful.
-    pass

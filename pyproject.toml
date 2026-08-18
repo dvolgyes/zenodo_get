@@ -1,43 +1,33 @@
-[build-system]
-requires = ["uv_build~=0.11.12"]
-build-backend = "uv_build"
-
-[tool.uv.build-backend]
-module-name = "zenodo_get"
-module-root = ""
-
 [project]
 name = "zenodo-get"
 version = "3.0.3"
-authors = [
-  { name = "David Völgyes", email = "david.volgyes@ieee.org" },
-]
 description = "Zenodo_get - a downloader for Zenodo records"
 readme = "README.md"
 requires-python = ">=3.10"
 license = "AGPL-3.0-only"
 license-files = ["LICENSE.txt"]
-keywords = ["zenodo", "download"]
+authors = [
+  { name = "David Völgyes", email = "david.volgyes@ieee.org" },
+]
+keywords = ["download", "zenodo"]
 classifiers = [
-    "Development Status :: 4 - Beta",
-    "Operating System :: OS Independent",
-    "Programming Language :: Python",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-    "Programming Language :: Python :: 3.13",
-    "Programming Language :: Python :: 3.14",
-    "Intended Audience :: Science/Research",
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Science/Research",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.10",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3.14",
 ]
 dependencies = [
-  "humanize",
   "click",
+  "httpx2[brotli,http2,zstd]>=2.12.0",
+  "humanize",
   "loguru",
   "tqdm",
-  "coverage>=7.8.2",
-  "httpx-retries>=0.4.5",
-  "httpxyz[brotli,http2,zstd]>=0.30.0",
 ]
 
 [project.urls]
@@ -46,19 +36,20 @@ Homepage = "https://github.com/dvolgyes/zenodo_get"
 [project.scripts]
 zenodo_get = "zenodo_get.zget:cli"
 
-[project.optional-dependencies]
-dev = [
-    "coverage",
-    "codecov",
-    "coveralls",
-]
-
 [dependency-groups]
 dev = [
-    "codecov>=2.1.13",
-    "coverage>=7.8.2",
-    "coveralls>=4.0.1",
-    "pytest>=8.3.5",
-    "pytest-cov>=6.1.1",
-    "pytest-xdist>=3.8.0",
+  "codecov>=2.1.13",
+  "coverage>=7.8.2",
+  "coveralls>=4.0.1",
+  "pytest>=8.3.5",
+  "pytest-cov>=6.1.1",
+  "pytest-xdist>=3.8.0",
 ]
+
+[build-system]
+requires = ["uv_build>=0.12.0,<0.13"]
+build-backend = "uv_build"
+
+[tool.uv.build-backend]
+module-name = "zenodo_get"
+module-root = ""

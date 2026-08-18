@@ -1,13 +1,12 @@
-#!/usr/bin/env python3
 """
 Integration tests that replicate the functionality of test.sh
 but can be properly measured with coverage.
 """
 
 import os
+import subprocess
 import sys
 import tempfile
-import subprocess
 from pathlib import Path
 
 # Add parent directory to path for imports
@@ -24,6 +23,7 @@ def test_version_command():
     result = subprocess.run(
         ["uv", "run", "zenodo_get", "--version"],
         capture_output=True,
+        check=False,
         text=True,
         cwd=PROJECT_ROOT,
     )
@@ -37,6 +37,7 @@ def test_help_command():
     result = subprocess.run(
         ["uv", "run", "zenodo_get", "-h"],
         capture_output=True,
+        check=False,
         text=True,
         cwd=PROJECT_ROOT,
     )
@@ -50,6 +51,7 @@ def test_cite_command():
     result = subprocess.run(
         ["uv", "run", "zenodo_get", "--cite"],
         capture_output=True,
+        check=False,
         text=True,
         cwd=PROJECT_ROOT,
     )
@@ -66,6 +68,7 @@ def test_expected_failures():
     result = subprocess.run(
         ["uv", "run", "zenodo_get", "invalid_doi"],
         capture_output=True,
+        check=False,
         text=True,
         cwd=PROJECT_ROOT,
     )
@@ -75,6 +78,7 @@ def test_expected_failures():
     result = subprocess.run(
         ["uv", "run", "zenodo_get", "-1", "x"],
         capture_output=True,
+        check=False,
         text=True,
         cwd=PROJECT_ROOT,
     )
@@ -84,6 +88,7 @@ def test_expected_failures():
     result = subprocess.run(
         ["uv", "run", "zenodo_get", "0", "x"],
         capture_output=True,
+        check=False,
         text=True,
         cwd=PROJECT_ROOT,
     )
@@ -93,6 +98,7 @@ def test_expected_failures():
     result = subprocess.run(
         ["uv", "run", "zenodo_get", "https://invalid"],
         capture_output=True,
+        check=False,
         text=True,
         cwd=PROJECT_ROOT,
     )
@@ -118,6 +124,7 @@ def test_url_list_generation():
                 temp_dir,
             ],
             capture_output=True,
+            check=False,
             text=True,
             cwd=PROJECT_ROOT,
         )
@@ -147,6 +154,7 @@ def test_md5_generation():
                 temp_dir,
             ],
             capture_output=True,
+            check=False,
             text=True,
             cwd=PROJECT_ROOT,
         )
@@ -162,6 +170,7 @@ def test_stdout_url_output():
     result = subprocess.run(
         ["uv", "run", "zenodo_get", "-r", "1215979", "-w", "-"],
         capture_output=True,
+        check=False,
         text=True,
         cwd=PROJECT_ROOT,
     )
@@ -191,6 +200,7 @@ def test_doi_download():
                 "-m",
             ],
             capture_output=True,
+            check=False,
             text=True,
             cwd=PROJECT_ROOT,
         )
@@ -219,6 +229,7 @@ def test_glob_patterns():
                 "-n",
             ],
             capture_output=True,
+            check=False,
             text=True,
             cwd=PROJECT_ROOT,
         )
@@ -246,6 +257,7 @@ def test_glob_patterns():
                 "-n",
             ],
             capture_output=True,
+            check=False,
             text=True,
             cwd=PROJECT_ROOT,
         )
@@ -295,7 +307,7 @@ def run_all_tests():
     print("Starting integration tests...")
 
     # Clean up any leftover files
-    for file in ["md5sums.txt", "urls.txt"]:
+    for file in ("md5sums.txt", "urls.txt"):
         if Path(file).exists():
             Path(file).unlink()
 
@@ -319,7 +331,7 @@ def run_all_tests():
         return False
     finally:
         # Clean up
-        for file in ["md5sums.txt", "urls.txt"]:
+        for file in ("md5sums.txt", "urls.txt"):
             if Path(file).exists():
                 Path(file).unlink()
 

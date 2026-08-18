@@ -3,20 +3,20 @@
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
-import httpxyz as httpx
+import httpx2
 import pytest
-from httpx_retries import RetryTransport
 
 from zenodo_get.downloader import (
+    DEFAULT_BACKOFF_FACTOR,
+    DEFAULT_RETRY_TOTAL,
     _close_client,
     _extract_filename_from_content_disposition,
     _extract_filename_from_url,
+    _RetryTransport,
     configure_client,
     create_configured_client,
     download_file,
     get_client,
-    DEFAULT_BACKOFF_FACTOR,
-    DEFAULT_RETRY_TOTAL,
 )
 
 
@@ -100,15 +100,6 @@ class TestDownloadFile:
         test_dir = tmp_path / "download_test"
         test_dir.mkdir(parents=True, exist_ok=True)
         return test_dir
-
-    @pytest.fixture
-    def cleanup_files(self) -> list[Path]:
-        """Track files created during tests for cleanup."""
-        files: list[Path] = []
-        yield files
-        for f in files:
-            if f.exists():
-                f.unlink()
 
     def test_download_with_explicit_output(self, output_dir: Path) -> None:
         """Test download with explicit output filename."""
@@ -210,9 +201,9 @@ class TestDownloadFile:
             patch.object(
                 get_client(),
                 "stream",
-                side_effect=httpx.TimeoutException("Connection timed out"),
+                side_effect=httpx2.TimeoutException("Connection timed out"),
             ),
-            pytest.raises(httpx.TimeoutException),
+            pytest.raises(httpx2.TimeoutException),
         ):
             download_file(
                 "https://example.com/file.txt",
@@ -225,7 +216,7 @@ class TestDownloadFile:
         mock_response = MagicMock()
         mock_response.status_code = 404
         mock_response.raise_for_status = MagicMock(
-            side_effect=httpx.HTTPStatusError(
+            side_effect=httpx2.HTTPStatusError(
                 "Not Found", request=MagicMock(), response=mock_response
             )
         )
@@ -233,7 +224,7 @@ class TestDownloadFile:
         mock_response.__exit__ = MagicMock(return_value=False)
 
         with patch.object(get_client(), "stream", return_value=mock_response):
-            with pytest.raises(httpx.HTTPStatusError):
+            with pytest.raises(httpx2.HTTPStatusError):
                 download_file(
                     "https://example.com/notfound.txt",
                     out=str(output_dir / "error_test.txt"),
@@ -318,13 +309,13 @@ class TestDownloadFile:
 
 
 class TestGlobalClient:
-    """Tests for global httpx client."""
+    """Tests for global httpx2 client."""
 
     def test_global_client_exists(self) -> None:
         """Test that global client is created via get_client()."""
         client = get_client()
         assert client is not None
-        assert isinstance(client, httpx.Client)
+        assert isinstance(client, httpx2.Client)
 
     def test_global_client_follows_redirects(self) -> None:
         """Test that global client is configured to follow redirects."""
@@ -339,23 +330,76 @@ class TestClientConfiguration:
         """Test that default client has retry transport configured."""
         _close_client()
         client = get_client()
-        assert isinstance(client._transport, RetryTransport)
+        assert client._transport._retry_total == DEFAULT_RETRY_TOTAL
+
+    def test_retry_transport_retries_transient_status(self) -> None:
+        """Test that transient HTTP statuses are retried."""
+        calls = 0
+
+        def handler(request: httpx2.Request) -> httpx2.Response:
+            nonlocal calls
+            calls += 1
+            status_code = 503 if calls == 1 else 200
+            return httpx2.Response(status_code, request=request)
+
+        transport = _RetryTransport(
+            httpx2.MockTransport(handler),
+            retry_total=1,
+            backoff_factor=0.1,
+            max_backoff_wait=1.0,
+            respect_retry_after_header=False,
+        )
+        request = httpx2.Request("GET", "https://example.com")
+
+        with patch("zenodo_get.downloader.time.sleep") as sleep:
+            response = transport.handle_request(request)
+
+        assert response.status_code == 200
+        assert calls == 2
+        sleep.assert_called_once_with(0.1)
+
+    def test_retry_transport_retries_request_errors(self) -> None:
+        """Test that transient request errors are retried."""
+        calls = 0
+
+        def handler(request: httpx2.Request) -> httpx2.Response:
+            nonlocal calls
+            calls += 1
+            if calls == 1:
+                raise httpx2.ConnectError("temporary failure", request=request)
+            return httpx2.Response(200, request=request)
+
+        transport = _RetryTransport(
+            httpx2.MockTransport(handler),
+            retry_total=1,
+            backoff_factor=0.1,
+            max_backoff_wait=1.0,
+            respect_retry_after_header=False,
+        )
+        request = httpx2.Request("GET", "https://example.com")
+
+        with patch("zenodo_get.downloader.time.sleep") as sleep:
+            response = transport.handle_request(request)
+
+        assert response.status_code == 200
+        assert calls == 2
+        sleep.assert_called_once_with(0.1)
 
     def test_configure_client_sets_retry_options(self) -> None:
         """Test that configure_client creates client with specified settings."""
         _close_client()
         configure_client(retry_total=3, backoff_factor=1.0)
         client = get_client()
-        assert isinstance(client, httpx.Client)
-        assert isinstance(client._transport, RetryTransport)
+        assert isinstance(client, httpx2.Client)
+        assert client._transport._retry_total == 3
 
     def test_create_configured_client_independent(self) -> None:
         """Test that create_configured_client creates an independent client."""
         client1 = create_configured_client(retry_total=2, backoff_factor=0.25)
         client2 = create_configured_client(retry_total=4, backoff_factor=1.5)
         assert client1 is not client2
-        assert isinstance(client1._transport, RetryTransport)
-        assert isinstance(client2._transport, RetryTransport)
+        assert client1._transport._retry_total == 2
+        assert client2._transport._retry_total == 4
         client1.close()
         client2.close()
 

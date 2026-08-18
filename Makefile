@@ -1,4 +1,9 @@
-#!/usr/bin/make
+.PHONY: all clean test ci-test test-deploy deploy
+
+all: test
+
+clean:
+	rm -fR build dist
 
 test:
 	uv run pytest -n 4 --cov

@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """
 Tests for existing file handling modes (--overwrite, --no-overwrite, --ignore-existing-files).
 """
@@ -202,11 +201,11 @@ class TestAPIParameterValidation:
         """Test that valid modes are accepted."""
         # Validation happens early, before network call
         # We test with invalid record to trigger error after validation passes
-        for mode in [
+        for mode in (
             EXISTING_FILE_OVERWRITE,
             EXISTING_FILE_NO_OVERWRITE,
             EXISTING_FILE_IGNORE,
-        ]:
+        ):
             with tempfile.TemporaryDirectory() as temp_dir:
                 # This should not raise ValueError for invalid mode
                 with pytest.raises(Exception) as exc_info:
