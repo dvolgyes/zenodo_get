@@ -1,6 +1,6 @@
 [project]
 name = "zenodo-get"
-version = "3.0.3"
+version = "3.1.0"
 description = "Zenodo_get - a downloader for Zenodo records"
 readme = "README.md"
 requires-python = ">=3.10"

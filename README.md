@@ -1,7 +1,6 @@
 # zenodo_get: a downloader for Zenodo records
 
 [![CI]
-[![CIRCLECI]
 [![BUILD STATUS]
 [![COVERAGE STATUS]
 [![PYVERSION]
