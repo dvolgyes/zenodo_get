@@ -15,5 +15,3 @@ def cd(newdir: str | Path) -> Iterator[None]:
         yield
     finally:
         os.chdir(previous_directory)
-
-

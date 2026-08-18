@@ -11,6 +11,7 @@ from zenodo_get.workflow.log_record_summary import log_record_summary
 
 HandleFile = Callable[..., bool | str]
 
+
 def download_files(
     metadata: dict[str, Any],
     files: list[dict[str, Any]],
@@ -67,4 +68,3 @@ def download_files(
         no_overwrite_mode,
         exceptions_on_failure,
     )
-

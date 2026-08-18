@@ -21,9 +21,7 @@ def filter_files_from_metadata(
     for file_info in files_in_metadata:
         filename = file_info.get("filename") or file_info.get("key")
         if filename:
-            if not glob_str or any(
-                fnmatch(filename, pattern) for pattern in glob_str
-            ):
+            if not glob_str or any(fnmatch(filename, pattern) for pattern in glob_str):
                 matched_files.append(file_info)
         else:
             logger.warning(
@@ -37,4 +35,3 @@ def filter_files_from_metadata(
             f"{record_id}"
         )
     return matched_files
-

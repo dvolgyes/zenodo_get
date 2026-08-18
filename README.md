@@ -5,8 +5,8 @@
 [![Coverage Status](https://img.shields.io/coveralls/github/dvolgyes/zenodo_get/main)](https://coveralls.io/github/dvolgyes/zenodo_get?branch=main)
 [![pyversion](https://img.shields.io/pypi/pyversions/zenodo_get.svg)](https://pypi.org/project/zenodo-get/)
 [![PyPI - License](https://img.shields.io/pypi/l/zenodo_get.svg)](https://github.com/dvolgyes/zenodo_get/raw/main/LICENSE.txt)
-[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.1261812.svg)](https://doi.org/10.5281/zenodo.1261812)
-A Python tool for downloading files from Zenodo records. Requires **Python 3.10+**.
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.1261812.svg)](https://doi.org/10.5281/zenodo.1261812) A Python tool
+for downloading files from Zenodo records. Requires **Python 3.10+**.
 
 ## Installation
 
@@ -33,17 +33,11 @@ uvx zenodo_get RECORD_ID_OR_DOI
 
 ### Common Options
 
-| Option | Description |
-| -- | -- |
-| `-o DIR` | Output directory (created if needed) |
-| `-g PATTERN` | Filter files by glob pattern (e.g., `-g "*.pdf"`) |
-| `-m` | Generate `md5sums.txt` for verification |
-| `-w FILE` | Write URLs to file instead of downloading (`-w -` for stdout) |
-| `-e` | Continue on error (skip failed files) |
-| `-n` | Start fresh (don't resume previous download) |
-| `-v N` | Verbosity level 0-4 (default: 2) |
-| `--proxy URL` | Use an HTTP(S) or SOCKS5 proxy |
-| `--no-proxy` | Disable proxy use, including environment variables |
+| Option | Description | | -- | -- | | `-o DIR` | Output directory (created if needed) | | `-g PATTERN` | Filter files
+by glob pattern (e.g., `-g "*.pdf"`) | | `-m` | Generate `md5sums.txt` for verification | | `-w FILE` | Write URLs to
+file instead of downloading (`-w -` for stdout) | | `-e` | Continue on error (skip failed files) | | `-n` | Start fresh
+(don't resume previous download) | | `-v N` | Verbosity level 0-4 (default: 2) | | `--proxy URL` | Use an HTTP(S) or
+SOCKS5 proxy | | `--no-proxy` | Disable proxy use, including environment variables |
 
 Proxy settings follow curl's CGI-safe environment policy: `HTTPS_PROXY`/`https_proxy` apply to HTTPS requests,
 `ALL_PROXY`/`all_proxy` applies to all requests, and `NO_PROXY`/`no_proxy` bypasses matching hosts. `HTTP_PROXY` and
@@ -51,13 +45,10 @@ Proxy settings follow curl's CGI-safe environment policy: `HTTPS_PROXY`/`https_p
 
 ### Retry Options
 
-| Option | Description |
-| -- | -- |
-| `--max-http-retries N` | HTTP retries with exponential backoff (default: 5) |
-| `--backoff-factor N` | Backoff multiplier in seconds (default: 0.5) |
-| `-R N` | Application-level retries for checksum failures (default: 1) |
-| `-p N` | Pause between retries in seconds (default: 3) |
-| `-t N` | Connection timeout in seconds (default: 25) |
+| Option | Description | | -- | -- | | `--max-http-retries N` | HTTP retries with exponential backoff (default: 5) | |
+`--backoff-factor N` | Backoff multiplier in seconds (default: 0.5) | | `-R N` | Application-level retries for checksum
+failures (default: 1) | | `-p N` | Pause between retries in seconds (default: 3) | | `-t N` | Connection timeout in
+seconds (default: 25) |
 
 ### Examples
 
@@ -119,16 +110,12 @@ download(
 
 ### Parameters
 
-| Parameter | Type | Default | Description |
-| -- | -- | -- | -- |
-| `record_or_doi` | `str` | - | Zenodo record ID or DOI |
-| `output_dir` | `str \| Path` | `"."` | Output directory |
-| `file_glob` | `str \| tuple` | `"*"` | Filter files by glob pattern(s) |
-| `md5` | `bool` | `False` | Generate `md5sums.txt` |
-| `continue_on_error` | `bool` | `False` | Continue on download errors |
-| `start_fresh` | `bool` | `False` | Don't resume previous download |
-| `timeout` | `float` | `15.0` | Connection timeout in seconds |
-| `exceptions_on_failure` | `bool` | `True` | Raise exceptions on errors |
+| Parameter | Type | Default | Description | | -- | -- | -- | -- | | `record_or_doi` | `str` | - | Zenodo record ID or
+DOI | | `output_dir` | `str \| Path` | `"."` | Output directory | | `file_glob` | `str \| tuple` | `"*"` | Filter files
+by glob pattern(s) | | `md5` | `bool` | `False` | Generate `md5sums.txt` | | `continue_on_error` | `bool` | `False` |
+Continue on download errors | | `start_fresh` | `bool` | `False` | Don't resume previous download | | `timeout` |
+`float` | `15.0` | Connection timeout in seconds | | `exceptions_on_failure` | `bool` | `True` | Raise exceptions on
+errors |
 
 ## Citation
 

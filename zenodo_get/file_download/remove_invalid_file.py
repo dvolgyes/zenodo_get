@@ -16,4 +16,3 @@ def remove_invalid_file(filename: str, keep_invalid: bool, verbosity: int) -> No
         Path(filename).unlink()
     except OSError as error:
         logger.error(f"Error deleting file {filename}: {error}")
-

@@ -14,4 +14,3 @@ def write_md5sums(files: list[dict[str, Any]]) -> None:
             checksum = file_info["checksum"].split(":")[-1]
             md5_file.write(f"{checksum}  {filename}\n")
     logger.info("md5sums.txt created.")
-

@@ -197,23 +197,13 @@ repos:
 
   # Source: 300_mdformat.yaml [central]
   - repo: https://github.com/executablebooks/mdformat
-    #  # Source: 230_py-review-rules.yaml [central]
-    #  - repo: https://github.com/dvolgyes/py-review-rules.git
-    #    rev: 0.2.1
-    #    hooks:
-    #      - id: py-review-rules
-    #        exclude: ^(legacy/|tests/)
-    #        args: [--max-function-nesting-depth, '1']
-
     rev: 1.0.0
     hooks:
       - id: mdformat
-        args: [--number, --wrap, '120', --compact-tables]
+        args: [--number, --wrap, '120']
         additional_dependencies:
           - mdformat-ruff
           - ruff
-          - mdformat-frontmatter
-          - mdformat-obsidian[recommended]
 
   # Source: 304_markdown_link_check.yaml [central]
   - repo: https://github.com/tcort/markdown-link-check

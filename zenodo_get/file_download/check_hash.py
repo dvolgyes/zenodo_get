@@ -14,4 +14,3 @@ def check_hash(filename: str, checksum: str) -> tuple[str, str]:
         for data in iter(lambda: file_handle.read(4096), b""):
             digest.update(data)
     return value, digest.hexdigest()
-

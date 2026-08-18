@@ -17,6 +17,7 @@ FetchMetadata = Callable[..., dict[str, Any] | None]
 FilterFiles = Callable[..., list[dict[str, Any]]]
 HandleFile = Callable[..., bool | str]
 
+
 def run_download(
     actual_record: str | None,
     actual_doi: str | None,
@@ -95,4 +96,3 @@ def run_download(
             handle_file,
             abort_requested,
         )
-

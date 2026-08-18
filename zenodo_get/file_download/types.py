@@ -4,4 +4,3 @@ from collections.abc import Callable
 
 CheckHash = Callable[[str, str], tuple[str, str]]
 DownloadFile = Callable[..., str]
-

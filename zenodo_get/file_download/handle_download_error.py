@@ -32,4 +32,3 @@ def handle_download_error(
         sys.exit(1)
     logger.warning(f"Skipping {filename} and continuing with the next file.")
     return False
-

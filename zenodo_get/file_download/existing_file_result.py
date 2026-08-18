@@ -1,6 +1,5 @@
 """Apply existing-file download policy."""
 
-
 from loguru import logger
 
 from zenodo_get.file_download.constants import (

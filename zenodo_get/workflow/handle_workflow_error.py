@@ -1,7 +1,9 @@
 """Handle workflow errors."""
 
 import sys
+
 from loguru import logger
+
 
 def handle_workflow_error(
     message: str,
@@ -13,4 +15,3 @@ def handle_workflow_error(
     if exceptions_on_failure:
         raise exception_type(message)
     sys.exit(1)
-

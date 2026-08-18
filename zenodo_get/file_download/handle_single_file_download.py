@@ -75,4 +75,3 @@ def handle_single_file_download(
         verbosity,
         check_hash_func,
     )
-

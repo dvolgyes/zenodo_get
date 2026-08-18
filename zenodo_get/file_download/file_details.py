@@ -18,4 +18,3 @@ def file_details(
     size = humanize.naturalsize(file_info.get("filesize") or file_info["size"])
     checksum = file_info["checksum"].split(":")[-1]
     return filename, link, size, checksum
-

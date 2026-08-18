@@ -15,4 +15,3 @@ def handle_metadata_error(
     if exceptions_on_failure:
         raise exception_type(message)
     sys.exit(1)
-

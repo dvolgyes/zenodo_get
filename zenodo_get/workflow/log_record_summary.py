@@ -23,4 +23,3 @@ def log_record_summary(
     if verbosity >= 1:
         logger.info(f"Total size: {humanize.naturalsize(total_size)}")
         logger.info(f"Number of files: {len(files)}")
-

@@ -22,4 +22,3 @@ def handle_skipped_files(
     if exceptions_on_failure:
         raise RuntimeError(message)
     sys.exit(1)
-
