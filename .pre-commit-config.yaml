@@ -202,6 +202,7 @@ repos:
       - id: mdformat
         args: [--number, --wrap, '120']
         additional_dependencies:
+          - mdformat-gfm
           - mdformat-ruff
           - ruff
 
